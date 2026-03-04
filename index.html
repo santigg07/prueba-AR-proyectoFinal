@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Prueba AR</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+</head>
+<body>
+    <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
+        <a-assets timeout="30000">
+            <a-asset-item id="pj" src="pj.png"></a-asset-item>
+        </a-assets>
+
+        <a-camera position=""0 0 0></a-camera>
+
+        <a-entity
+            id="pj"
+            scale="8 8 8"
+            position="-2 -10 -18"
+            gltf-model="#pj"
+            animation-mixer
+            shadow="cast: true; receive: false">
+        </a-entity>
+    </a-scene>
+</body>
+</html>
