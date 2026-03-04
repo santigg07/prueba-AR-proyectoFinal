@@ -7,23 +7,27 @@
     <title>Prueba AR</title>
     <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 </head>
-<body>
-    <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
-        <a-assets timeout="30000">
-            <a-asset-item id="pj" src="pj.png"></a-asset-item>
-        </a-assets>
+<body style="margin: 0px; overflow: hidden;">
+    <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+        <a-nft
+            type="nft"
+            url="pj.png"
+            smooth="true"
+            smoothCount="10"
+            smoothTolerance=".01"
+            smoothThreshold="5">
 
-        <a-camera position=""0 0 0></a-camera>
+            <a-image
+                src="pj.png"    
+                position="50 150 -100"
+                width="100"
+                height="100">
+            </a-image>
+        </a-nft>
 
-        <a-entity
-            id="pj"
-            scale="8 8 8"
-            position="-2 -10 -18"
-            gltf-model="#pj"
-            animation-mixer
-            shadow="cast: true; receive: false">
-        </a-entity>
+        <a-entity camera></a-entity>     
     </a-scene>
 </body>
 </html>
