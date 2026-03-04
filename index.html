@@ -3,22 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Prueba AR</title>
     <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 </head>
 <body>
     <a-scene>
-    <a-assets>
-        <img id="pj" src="pj.png">
-    </a-assets>
+        <a-assets>
+            <img id="pj" src="pj.png">
+        </a-assets>
 
-    <!-- Using the asset management system. -->
-    <a-image src="pj.png"></a-image>
+        <!-- Usamos #pj para referenciar el asset cargado -->
+        <a-image src="#pj" position="0 1.6 -3" width="2" height="2"></a-image>
 
-    <!-- Defining the URL inline. Not recommended but more comfortable for web developers. -->
-    <a-image src="pj.png"></a-image>
     </a-scene>
 </body>
 </html>
