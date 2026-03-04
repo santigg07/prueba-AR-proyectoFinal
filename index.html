@@ -11,26 +11,32 @@
     </style>
 </head>
 <body>
-
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <a-scene
+        embedded
+        arjs="sourceType: webcam;
+              debugUIEnabled: false;
+              videoTexture: false;
+              trackingMethod: best;">
 
         <a-assets>
             <img id="pj" src="pj.png">
         </a-assets>
 
-        <a-marker preset="hiro">
-            <a-image
-                src="#pj"
-                position="0 0 0"
-                rotation="-90 0 0"
-                width="1"
-                height="1">
-            </a-image>
-        </a-marker>
+        <!-- Imagen flotante fija frente a la cámara -->
+        <a-image
+            src="#pj"
+            position="0 0 -3"
+            width="1.5"
+            height="1.5">
+        </a-image>
 
-        <a-entity camera></a-entity>
+        <a-entity
+            camera
+            look-controls="enabled: false"
+            arjs-look-controls="smoothingFactor: 0.1"
+            fov="60">
+        </a-entity>
 
     </a-scene>
- 
 </body>
 </html>
