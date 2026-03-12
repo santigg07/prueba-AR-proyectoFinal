@@ -16,16 +16,20 @@
         <img id="pj" src="vaia.png">
       </a-assets>
     
-      <a-camera position="0 0 0"></a-camera>
+      <!-- Camera with child image so it stays centered in front of the user -->
+      <a-camera position="0 0 0">
+        <!-- image always 3 units ahead of the camera, will follow the camera movement -->
+        
     
-      <!-- 2D environment omitted for simplicity -->
+        <!-- 2D environment omitted for simplicity -->
         <a-image
-            src="#pj"
-            position="0 0 -3"
-            width="1.5"
-            height="1.5">
+          src="#pj"
+          position="0 0 -3"
+          width="1.5"
+          height="1.5">
         </a-image>
-    
+      </a-camera>
+      <!-- 2D environment omitted for simplicity -->
       <!-- Lights configuration omitted for simplicity -->
     </a-scene>
 
