@@ -1,23 +1,33 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
+<html lang="en">
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <!-- we import arjs version without NFT but with marker + location based support -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <body style="margin : 0px; overflow: hidden;">
-    <a-scene embedded arjs>
-      <a-marker preset="hiro">
-        <a-entity
-          position="0 0 0"
-          scale="0.05 0.05 0.05"
-          gltf-model="vaia.png"
-        ></a-entity>
-      </a-marker>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Prueba AR</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  </head>
+  <body>
+   
+   <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
+      <a-assets timeout="30000">
+        <img id="pj" src="vaia.png">
+      </a-assets>
+    
       <a-camera position="0 0 0"></a-camera>
+    
+      <!-- 2D environment omitted for simplicity -->
+        <a-image
+            src="#pj"
+            position="0 0 -3"
+            width="1.5"
+            height="1.5">
+        </a-image>
+    
+      <!-- Lights configuration omitted for simplicity -->
     </a-scene>
+
   </body>
 </html>
