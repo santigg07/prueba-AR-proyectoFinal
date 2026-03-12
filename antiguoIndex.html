@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Prueba AR</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  </head>
+  <body>
+   
+   <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
+      <a-assets timeout="30000">
+        <img id="pj" src="pj.png">
+      </a-assets>
+    
+      <a-camera position="0 0 0"></a-camera>
+    
+      <!-- 2D environment omitted for simplicity -->
+        <a-image
+            src="#pj"
+            position="0 0 -3"
+            width="1.5"
+            height="1.5">
+        </a-image>
+    
+      <!-- Lights configuration omitted for simplicity -->
+    </a-scene>
+
+  </body>
+</html>
