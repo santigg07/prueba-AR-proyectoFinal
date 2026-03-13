@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>AR Boss Battle</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; font-family: sans-serif; }
+
+    /* ── SPLASH ── */
+    #splash {
+      position: fixed; inset: 0; z-index: 999;
+      background: #0a0a1a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      color: #fff;
+    }
+    #splash h1 {
+      font-size: 2.2rem; font-weight: 900;
+      letter-spacing: 4px; color: #00e5ff;
+      text-shadow: 0 0 30px #00e5ff;
+    }
+    #splash p { color: #aaa; font-size: 0.95rem; text-align: center; max-width: 280px; line-height: 1.6; }
+    #splash .emoji { font-size: 4rem; animation: float 2s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+    #start-btn {
+      padding: 14px 44px;
+      background: #00e5ff; color: #000;
+      border: none; border-radius: 4px;
+      font-size: 1rem; font-weight: 900;
+      letter-spacing: 3px; cursor: pointer;
+    }
+
+    /* ── HUD ── */
+    #bars {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 12px 16px; z-index: 100;
+      display: none;
+      justify-content: space-between; align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    }
+    .hp-wrap { display: flex; flex-direction: column; gap: 3px; }
+    .hp-label { font-size: 0.6rem; letter-spacing: 2px; color: #aaa; }
+    .hp-bar { width: 110px; height: 10px; background: #222; border-radius: 5px; overflow: hidden; }
+    #boss-fill { height:100%; background:#ff2200; border-radius:5px; transition:width .3s; width:100%; }
+    #hero-fill { height:100%; background:#00ff88; border-radius:5px; transition:width .3s; width:100%; }
+    #score { color:#fff; font-size:1.3rem; font-weight:900; letter-spacing:2px; }
+
+    #msg {
+      position: fixed; bottom: 160px; left: 50%;
+      transform: translateX(-50%); z-index: 100;
+      background: rgba(0,0,0,0.75);
+      color: #00e5ff; font-size: 0.8rem;
+      letter-spacing: 2px; padding: 10px 20px;
+      border-radius: 20px; border: 1px solid #00e5ff55;
+      white-space: nowrap; display: none;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    #shoot-btn {
+      position: fixed; bottom: 40px; left: 50%;
+      transform: translateX(-50%);
+      width: 85px; height: 85px; border-radius: 50%;
+      background: radial-gradient(circle, #ff3300, #990000);
+      border: 3px solid #ff6644;
+      color: #fff; font-size: 2rem;
+      cursor: pointer; z-index: 200;
+      display: none; align-items: center; justify-content: center;
+      box-shadow: 0 0 20px #ff330088;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #shoot-btn:active { transform: translateX(-50%) scale(0.9); }
+    #shoot-btn.cool { opacity: 0.4; pointer-events: none; }
+
+    .pop {
+      position: fixed; top: 45%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-size: 1.4rem; font-weight: 900;
+      pointer-events: none; z-index: 300;
+      animation: popAnim 0.7s ease forwards;
+    }
+    @keyframes popAnim {
+      0%  { transform:translate(-50%,-50%) scale(0.5); opacity:1; }
+      100%{ transform:translate(-50%,-110%) scale(1.3); opacity:0; }
+    }
+
+    #flash {
+      position: fixed; inset: 0; opacity: 0;
+      pointer-events: none; z-index: 250;
+      transition: opacity 0.2s;
+    }
+
+    #result {
+      position: fixed; inset: 0; z-index: 900;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+    }
+    #result.win  { background: radial-gradient(ellipse, #001a08 0%, #000 70%); }
+    #result.lose { background: radial-gradient(ellipse, #1a0000 0%, #000 70%); }
+    #result-title {
+      font-size: 3rem; font-weight: 900; letter-spacing: 5px; color: #fff;
+      animation: popResult .5s ease;
+    }
+    @keyframes popResult { from{transform:scale(0.4);opacity:0} to{transform:scale(1);opacity:1} }
+    .win  #result-title { color:#00ff88; text-shadow:0 0 40px #00ff88; }
+    .lose #result-title { color:#ff2200; text-shadow:0 0 40px #ff2200; }
+    #result-score { color:#fff; font-size:1.1rem; letter-spacing:3px; }
+    #result-emoji { font-size:4rem; animation:float 2s ease-in-out infinite; }
+    #retry-btn {
+      padding: 12px 36px; background: transparent;
+      border: 2px solid #00e5ff; color: #00e5ff;
+      font-size: 0.9rem; font-weight: 700; letter-spacing: 3px;
+      cursor: pointer; border-radius: 4px;
+    }
+    #retry-btn:active { background:#00e5ff; color:#000; }
+
+    #compat-note {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #221100; color: #ffaa00;
+      font-size: 0.75rem; text-align: center;
+      padding: 8px 12px; z-index: 999; display: none; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="emoji">👾</div>
+  <h1>AR BATTLE</h1>
+  <p>Apunta la cámara al suelo.<br>Cuando veas el reticle, <strong>toca la pantalla</strong> para colocar el escenario y derrota al boss.</p>
+  <button id="start-btn" onclick="startGame()">▶ INICIAR</button>
+  <p style="font-size:0.7rem;color:#444;margin-top:4px">Requiere Chrome en Android</p>
+</div>
+
+<!-- ESCENA A-FRAME -->
+<a-scene id="scene"
+  webxr="requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #overlay"
+  renderer="colorManagement:true; logarithmicDepthBuffer:true"
+  vr-mode-ui="enabled:false">
+
+  <a-assets>
+    <!-- 
+      REEMPLAZA "boss.png" con la URL de tu imagen.
+      Si usas GitHub Pages, pon el boss.png en la misma carpeta que index.html
+      y déjalo como: src="boss.png"
+    -->
+    <img id="boss-tex" src="vaia.png" crossorigin="anonymous"/>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="false" wasd-controls="enabled:false"></a-camera>
+
+  <!-- RETICLE: se mueve con el hit-test -->
+  <a-entity id="reticle" visible="false">
+    <a-ring radius-inner="0.04" radius-outer="0.055"
+      rotation="-90 0 0"
+      material="color:#00e5ff; shader:flat; opacity:0.95">
+    </a-ring>
+    <a-ring radius-inner="0.07" radius-outer="0.075"
+      rotation="-90 0 0"
+      material="color:#00e5ff; shader:flat; opacity:0.35">
+    </a-ring>
+  </a-entity>
+
+  <!-- ANCLA DEL ESCENARIO -->
+  <a-entity id="anchor" visible="false">
+
+    <!-- Suelo -->
+    <a-circle radius="0.65" rotation="-90 0 0"
+      material="color:#0b1f0b; opacity:0.85; transparent:true">
+    </a-circle>
+
+    <!-- Grid decorativo (se llena por JS) -->
+    <a-entity id="grid"></a-entity>
+
+    <!-- HÉROE -->
+    <a-entity id="hero" position="0 0 0.38">
+      <a-cylinder radius="0.038" height="0.13" color="#3355ff" position="0 0.065 0"></a-cylinder>
+      <a-sphere radius="0.038" color="#ffddaa" position="0 0.17 0"></a-sphere>
+      <a-box width="0.007" height="0.09" depth="0.007" color="#99ccff"
+             position="0.052 0.11 0" rotation="0 0 -25"></a-box>
+      <a-box width="0.05" height="0.06" depth="0.008" color="#2244bb"
+             position="-0.052 0.09 0"></a-box>
+    </a-entity>
+
+    <!-- BOSS como sprite PNG -->
+    <a-entity id="boss" position="0 0 -0.38">
+      <a-plane id="boss-sprite"
+        width="0.45" height="0.45"
+        position="0 0.225 0"
+        material="src:#boss-tex; transparent:true; alphaTest:0.05; side:double; depthWrite:false">
+      </a-plane>
+      <!-- Sombra bajo el boss -->
+      <a-ellipse semi-minor-axis="0.1" semi-major-axis="0.13"
+        rotation="-90 0 0" position="0 0.002 0"
+        material="color:#000; opacity:0.3; transparent:true; shader:flat">
+      </a-ellipse>
+    </a-entity>
+
+    <!-- Pool proyectiles -->
+    <a-entity id="bullets"></a-entity>
+
+  </a-entity>
+
+</a-scene>
+
+<!-- OVERLAY (HUD encima del AR) -->
+<div id="overlay" style="position:fixed;inset:0;pointer-events:none;z-index:100;display:none">
+  <div id="flash"></div>
+
+  <div id="bars" style="display:none;pointer-events:none">
+    <div class="hp-wrap">
+      <span class="hp-label">🔴 BOSS</span>
+      <div class="hp-bar"><div id="boss-fill"></div></div>
+    </div>
+    <div id="score">0000</div>
+    <div class="hp-wrap" style="align-items:flex-end">
+      <span class="hp-label">💙 HÉROE</span>
+      <div class="hp-bar"><div id="hero-fill"></div></div>
+    </div>
+  </div>
+
+  <div id="msg">📍 APUNTA AL SUELO Y TOCA PARA COLOCAR</div>
+</div>
+
+<button id="shoot-btn" onclick="shoot()">🔫</button>
+
+<div id="result">
+  <div id="result-emoji">🏆</div>
+  <div id="result-title">VICTORIA</div>
+  <div id="result-score">PUNTUACIÓN: 0</div>
+  <button id="retry-btn" onclick="location.reload()">↩ REINICIAR</button>
+</div>
+
+<div id="compat-note"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   ESTADO
+═══════════════════════════════════════ */
+const G = {
+  state: 'splash',
+  placed: false,
+  bossHP: 5, bossMax: 5,
+  heroHP: 3, heroMax: 3,
+  score: 0,
+  cooldown: false,
+  bossTimer: null,
+  xrSession: null,
+  hitTestSource: null,
+  refSpace: null,
+  lastHitMatrix: null,
+};
+
+/* ═══════════════════════════════════════
+   INICIO
+═══════════════════════════════════════ */
+function startGame() {
+  console.log('startGame called');
+  document.getElementById('splash').style.display = 'none';
+
+  if (!navigator.xr) {
+    console.log('No WebXR support');
+    showCompatNote('Tu navegador no soporta WebXR AR. Usa Chrome en Android.');
+    startFallback();
+    return;
+  }
+
+  navigator.xr.isSessionSupported('immersive-ar').then(ok => {
+    console.log('WebXR AR supported:', ok);
+    if (!ok) {
+      showCompatNote('WebXR AR no disponible en este dispositivo. Mostrando modo demo.');
+      startFallback();
+    } else {
+      initWebXR();
+    }
+  }).catch(err => {
+    console.log('Error checking WebXR:', err);
+    startFallback();
+  });
+}
+
+/* ── WebXR con hit-test ── */
+function initWebXR() {
+  const sceneEl = document.getElementById('scene');
+  sceneEl.style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+  document.getElementById('msg').style.display = 'block';
+
+  sceneEl.addEventListener('loaded', () => {
+    const renderer = sceneEl.renderer;
+    renderer.xr.enabled = true;
+
+    const sessionInit = {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: document.getElementById('overlay') }
+    };
+
+    navigator.xr.requestSession('immersive-ar', sessionInit)
+      .then(session => {
+        G.xrSession = session;
+        renderer.xr.setSession(session);
+
+        session.requestReferenceSpace('local').then(rs => {
+          G.refSpace = rs;
+        });
+
+        session.requestReferenceSpace('viewer').then(viewerSpace => {
+          session.requestHitTestSource({ space: viewerSpace }).then(src => {
+            G.hitTestSource = src;
+            G.state = 'scanning';
+
+            // Loop principal XR
+            renderer.setAnimationLoop((time, frame) => {
+              if (!frame) return;
+              xrFrame(frame);
+            });
+          });
+        });
+
+        session.addEventListener('end', () => {
+          G.hitTestSource = null;
+          renderer.setAnimationLoop(null);
+        });
+      })
+      .catch(err => {
+        console.warn('XR error:', err);
+        showCompatNote('Error al iniciar AR: ' + err.message);
+        startFallback();
+      });
+  });
+
+  // Touch → colocar escenario
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    if (G.state === 'scanning' && G.lastHitMatrix) {
+      placeScene(G.lastHitMatrix);
+    }
+  });
+}
+
+function xrFrame(frame) {
+  if (!G.hitTestSource || !G.refSpace) return;
+
+  const results = frame.getHitTestResults(G.hitTestSource);
+  const reticleEl = document.getElementById('reticle');
+
+  if (results.length > 0) {
+    const pose = results[0].getPose(G.refSpace);
+    if (pose) {
+      G.lastHitMatrix = pose.transform;
+      const p = pose.transform.position;
+      reticleEl.setAttribute('visible', true);
+      reticleEl.setAttribute('position', { x: p.x, y: p.y, z: p.z });
+    }
+  } else {
+    G.lastHitMatrix = null;
+    reticleEl.setAttribute('visible', false);
+  }
+}
+
+/* ── Fallback sin WebXR (desktop / browsers sin soporte) ── */
+function startFallback() {
+  const sceneEl = document.getElementById('scene');
+  sceneEl.removeAttribute('webxr');
+  sceneEl.setAttribute('embedded', '');
+  sceneEl.style.display = 'block';
+  sceneEl.style.width = '100vw';
+  sceneEl.style.height = '100vh';
+  sceneEl.style.background = '#111a11';
+
+  document.getElementById('overlay').style.display = 'block';
+  document.getElementById('msg').style.display = 'block';
+  G.state = 'scanning';
+
+  // En fallback, el toque coloca directamente
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    if (G.state === 'scanning') placeScene(null);
+  });
+
+  // También click en desktop
+  document.addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    if (G.state === 'scanning') placeScene(null);
+  });
+}
+
+/* ═══════════════════════════════════════
+   COLOCAR ESCENARIO
+═══════════════════════════════════════ */
+function placeScene(transform) {
+  if (G.placed) return;
+  G.placed = true;
+  G.state = 'playing';
+
+  document.getElementById('reticle').setAttribute('visible', false);
+  document.getElementById('msg').style.display = 'none';
+
+  const anchor = document.getElementById('anchor');
+
+  if (transform) {
+    const p = transform.position;
+    anchor.setAttribute('position', `${p.x} ${p.y} ${p.z}`);
+  }
+
+  anchor.setAttribute('visible', true);
+  anchor.setAttribute('animation__in',
+    'property:scale; from:0 0 0; to:1 1 1; dur:700; easing:easeOutElastic');
+
+  // Anims idle
+  document.getElementById('boss').setAttribute('animation__idle',
+    'property:position; from:0 0 -0.38; to:0 0.04 -0.38; dir:alternate; loop:true; dur:1200; easing:easeInOutSine');
+  document.getElementById('hero').setAttribute('animation__idle',
+    'property:rotation; from:0 -8 0; to:0 8 0; dir:alternate; loop:true; dur:1500; easing:easeInOutSine');
+
+  buildGrid();
+
+  document.getElementById('bars').style.display = 'flex';
+  const btn = document.getElementById('shoot-btn');
+  btn.style.display = 'flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+
+  updateBars();
+  startBossAI();
+  pop('⚔️ BATALLA', '#00e5ff');
+}
+
+/* ── Grid decorativo ── */
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  for (let i = -2; i <= 2; i++) {
+    const s = 0.18;
+    const lh = document.createElement('a-entity');
+    lh.setAttribute('line', `start:-0.6 0.001 ${i*s}; end:0.6 0.001 ${i*s}; color:#00e5ff; opacity:0.1`);
+    grid.appendChild(lh);
+    const lv = document.createElement('a-entity');
+    lv.setAttribute('line', `start:${i*s} 0.001 -0.6; end:${i*s} 0.001 0.6; color:#00e5ff; opacity:0.1`);
+    grid.appendChild(lv);
+  }
+}
+
+/* ═══════════════════════════════════════
+   DISPARO
+═══════════════════════════════════════ */
+function shoot() {
+  if (G.state !== 'playing' || G.cooldown) return;
+  G.cooldown = true;
+  document.getElementById('shoot-btn').classList.add('cool');
+
+  const anchor = document.getElementById('anchor');
+  const bullet = document.createElement('a-sphere');
+  bullet.setAttribute('radius', '0.018');
+  bullet.setAttribute('color', '#ffff00');
+  bullet.setAttribute('emissive', '#ffcc00');
+  bullet.setAttribute('emissive-intensity', '2');
+  bullet.setAttribute('position', '0 0.17 0.38');
+  bullet.setAttribute('animation__fly', {
+    property:'position', to:'0 0.17 -0.38',
+    dur:320, easing:'linear'
+  });
+  anchor.appendChild(bullet);
+
+  setTimeout(() => {
+    bullet.parentNode?.removeChild(bullet);
+    hitBoss();
+  }, 320);
+
+  setTimeout(() => {
+    G.cooldown = false;
+    document.getElementById('shoot-btn').classList.remove('cool');
+  }, 750);
+}
+
+/* ═══════════════════════════════════════
+   LÓGICA DE COMBATE
+═══════════════════════════════════════ */
+function hitBoss() {
+  if (G.state !== 'playing') return;
+  G.bossHP--;
+  G.score += 100;
+  updateBars();
+  updateScore();
+
+  // Shake + tinte rojo del sprite
+  const bossEl = document.getElementById('boss');
+  bossEl.setAttribute('animation__shake',
+    'property:position; from:-0.05 0 -0.38; to:0.05 0 -0.38; dir:alternate; loop:3; dur:65; easing:linear');
+  const sprite = document.getElementById('boss-sprite');
+  sprite.setAttribute('material', 'src:#boss-tex; transparent:true; alphaTest:0.05; side:double; color:#ff2200');
+  setTimeout(() => {
+    sprite.setAttribute('material', 'src:#boss-tex; transparent:true; alphaTest:0.05; side:double; color:#ffffff');
+  }, 200);
+
+  spawnParticles('0 0.22 -0.38');
+  pop('💥 HIT!', '#ff4400');
+  flash('#ff220033');
+
+  if (G.bossHP <= 0) victory();
+}
+
+function startBossAI() {
+  G.bossTimer = setInterval(() => {
+    if (G.state === 'playing') bossAttack();
+  }, 3000);
+}
+
+function bossAttack() {
+  const anchor = document.getElementById('anchor');
+  const proj = document.createElement('a-sphere');
+  proj.setAttribute('radius', '0.025');
+  proj.setAttribute('color', '#ff0000');
+  proj.setAttribute('emissive', '#ff0000');
+  proj.setAttribute('emissive-intensity', '2');
+  proj.setAttribute('position', '0 0.2 -0.38');
+  proj.setAttribute('animation__fly', {
+    property:'position', to:'0 0.2 0.38',
+    dur:550, easing:'linear'
+  });
+  anchor.appendChild(proj);
+
+  setTimeout(() => {
+    proj.parentNode?.removeChild(proj);
+    damageHero();
+  }, 550);
+}
+
+function damageHero() {
+  if (G.state !== 'playing') return;
+  G.heroHP--;
+  updateBars();
+  flash('#ff000066');
+  pop('💔 ¡DAÑO!', '#ff4444');
+  if (G.heroHP <= 0) defeat();
+}
+
+/* ═══════════════════════════════════════
+   PARTÍCULAS
+═══════════════════════════════════════ */
+function spawnParticles(posStr) {
+  const anchor = document.getElementById('anchor');
+  const pos = posStr.split(' ').map(Number);
+  ['#ff4400','#ffaa00','#ffff00'].forEach(color => {
+    const p = document.createElement('a-sphere');
+    p.setAttribute('radius', '0.013');
+    p.setAttribute('color', color);
+    p.setAttribute('emissive', color);
+    p.setAttribute('emissive-intensity', '1');
+    p.setAttribute('position', posStr);
+    const tx = pos[0] + (Math.random()-.5)*.3;
+    const ty = pos[1] + Math.random()*.2;
+    const tz = pos[2] + (Math.random()-.5)*.2;
+    p.setAttribute('animation__m', { property:'position', to:`${tx} ${ty} ${tz}`, dur:400, easing:'easeOutQuad' });
+    p.setAttribute('animation__f', { property:'material.opacity', from:1, to:0, dur:300, delay:200 });
+    anchor.appendChild(p);
+    setTimeout(() => p.parentNode?.removeChild(p), 700);
+  });
+}
+
+/* ═══════════════════════════════════════
+   RESULTADO
+═══════════════════════════════════════ */
+function victory() {
+  G.state = 'result';
+  clearInterval(G.bossTimer);
+  document.getElementById('boss').setAttribute('animation__die',
+    'property:scale; to:0 0 0; dur:600; easing:easeInBack');
+  document.getElementById('shoot-btn').style.display = 'none';
+  setTimeout(() => showResult(true), 900);
+}
+
+function defeat() {
+  G.state = 'result';
+  clearInterval(G.bossTimer);
+  document.getElementById('shoot-btn').style.display = 'none';
+  showResult(false);
+}
+
+function showResult(win) {
+  const el = document.getElementById('result');
+  el.className = win ? 'win' : 'lose';
+  el.style.display = 'flex';
+  document.getElementById('result-title').textContent = win ? '¡VICTORIA!' : '¡DERROTA!';
+  document.getElementById('result-emoji').textContent = win ? '🏆' : '💀';
+  document.getElementById('result-score').textContent = `PUNTUACIÓN: ${G.score}`;
+}
+
+/* ═══════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════ */
+function updateBars() {
+  document.getElementById('boss-fill').style.width = Math.max(0, G.bossHP/G.bossMax*100) + '%';
+  document.getElementById('hero-fill').style.width = Math.max(0, G.heroHP/G.heroMax*100) + '%';
+}
+function updateScore() {
+  document.getElementById('score').textContent = G.score.toString().padStart(4,'0');
+}
+function flash(color) {
+  const el = document.getElementById('flash');
+  el.style.background = color; el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 300);
+}
+function pop(text, color) {
+  const el = document.createElement('div');
+  el.className = 'pop'; el.textContent = text;
+  el.style.color = color;
+  el.style.textShadow = `0 0 10px ${color}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+function showCompatNote(msg) {
+  const el = document.getElementById('compat-note');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
