@@ -17,32 +17,29 @@
       </a-assets>
     
       <!-- camera used for raycasting --->
-      <a-camera id="camera" position="0 0 0" raycaster="objects: .ar-floor" cursor="rayOrigin: mouse"></a-camera>
-      <!-- invisible plane as target for raycaster -->
-      <a-plane class="ar-floor" rotation="-90 0 0" width="100" height="100" visible="false"></a-plane>
-      <!-- marker image placed at root so it can be moved freely -->
+      <a-camera id="camera" position="0 0 0"></a-camera>
+      <!-- marker image that follows camera direction -->
       <a-image
         id="marker"
-        src="vaia.png"
-        position="0 0 -3"
+        src="#pj"
         width="1.5"
         height="1.5"
-        visible="false">
+        follow-camera="distance:3">
       </a-image>
       <script>
-        const scene = document.querySelector('a-scene');
-        const marker = document.getElementById('marker');
-
-        // al hacer click/tocar en el vídeo AR
-        scene.addEventListener('click', function (evt) {
-          console.log('scene click', evt.detail);
-          const inter = evt.detail && evt.detail.intersection;
-          if (inter && inter.point) {
-            // mueve la imagen al punto dectectado y muestra la imagen
-            marker.setAttribute('position', inter.point);
-            marker.setAttribute('visible', 'true');
+        // Component to make image follow camera direction
+        AFRAME.registerComponent('follow-camera', {
+          schema: { distance: { type: 'number', default: 3 } },
+          init() { this.dir = new THREE.Vector3(); this.pos = new THREE.Vector3(); },
+          tick() {
+            const cam = this.el.sceneEl.camera;
+            if (!cam) { return; }
+            cam.getWorldDirection(this.dir);
+            cam.getWorldPosition(this.pos);
+            this.pos.add(this.dir.multiplyScalar(this.data.distance));
+            this.el.object3D.position.copy(this.pos);
           }
-        })
+        });
       </script>
       <!-- 2D environment omitted for simplicity -->
       <!-- Lights configuration omitted for simplicity -->
