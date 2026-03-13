@@ -79,24 +79,30 @@
 
   startBtn.addEventListener('click', async () => {
     if (!navigator.xr) {
-      alert('Este navegador no soporta WebXR. Usa Chrome en Android.');
+      showMessage('Este navegador no soporta WebXR. Usa Chrome en Android.', 4000);
       return;
     }
+
+    showMessage('Iniciando AR... espera permiso de cámara.', 60000);
+    startBtn.disabled = true;
 
     try {
       const supported = await navigator.xr.isSessionSupported('immersive-ar');
       if (!supported) {
-        alert('WebXR AR no está disponible en este dispositivo.');
+        showMessage('WebXR AR no está disponible en este dispositivo.', 4000);
+        startBtn.disabled = false;
         return;
       }
 
+      await initXR();
+
+      // Solo ocultar el overlay si la sesión se inició correctamente
       overlay.style.display = 'none';
       scene.style.display = 'block';
-
-      await initXR();
     } catch (err) {
-      console.error(err);
-      alert('Error al iniciar AR: ' + err.message);
+      console.error('Error al iniciar AR:', err);
+      showMessage('Error al iniciar AR: ' + (err.message || err), 6000);
+      startBtn.disabled = false;
     }
   });
 
