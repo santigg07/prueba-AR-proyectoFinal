@@ -16,26 +16,26 @@
         <img id="pj" src="vaia.png">
       </a-assets>
     
-      <!-- Camera with child image so it stays centered in front of the user -->
-      <a-camera id="camera" position="0 0 0" raycaster="objects: .ar-floor" cursor="rayOrigin:">
-        <!-- image always 3 units ahead of the camera, will follow the camera movement -->    
-        <!-- 2D environment omitted for simplicity -->
-        <a-image
-          id="marker"
-          class="ar-floor"
-          src="#pj"
-          position="0 0 -3"
-          width="1.5"
-          height="1.5"
-          visible="false">          
-        </a-image>
-      </a-camera>
+      <!-- camera used for raycasting --->
+      <a-camera id="camera" position="0 0 0" raycaster="objects: .ar-floor" cursor="rayOrigin: mouse"></a-camera>
+      <!-- invisible plane as target for raycaster -->
+      <a-plane class="ar-floor" rotation="-90 0 0" width="100" height="100" visible="false"></a-plane>
+      <!-- marker image placed at root so it can be moved freely -->
+      <a-image
+        id="marker"
+        src="#pj"
+        position="0 0 -3"
+        width="1.5"
+        height="1.5"
+        visible="false">
+      </a-image>
       <script>
         const scene = document.querySelector('a-scene');
-        const marker = document.querySelector('marker');
+        const marker = document.getElementById('marker');
 
         // al hacer click/tocar en el vídeo AR
         scene.addEventListener('click', function (evt) {
+          console.log('scene click', evt.detail);
           const inter = evt.detail && evt.detail.intersection;
           if (inter && inter.point) {
             // mueve la imagen al punto dectectado y muestra la imagen
