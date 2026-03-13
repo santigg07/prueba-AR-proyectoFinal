@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Prueba AR</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  </head>
+  <body>
+   
+   <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
+      <a-assets timeout="30000">
+        <img id="pj" src="vaia.png">
+      </a-assets>
+    
+      <!-- camera used for raycasting --->
+      <a-camera id="camera" position="0 0 0"></a-camera>
+      <!-- marker image that follows camera direction -->
+      <a-image
+        id="marker"
+        src="#pj"
+        width="1.5"
+        height="1.5"
+        follow-camera="distance:3">
+      </a-image>
+      <script>
+        // Component to make image follow camera direction
+        AFRAME.registerComponent('follow-camera', {
+          schema: { distance: { type: 'number', default: 3 } },
+          init() { this.dir = new THREE.Vector3(); this.pos = new THREE.Vector3(); },
+          tick() {
+            const cam = this.el.sceneEl.camera;
+            if (!cam) { return; }
+            cam.getWorldDirection(this.dir);
+            cam.getWorldPosition(this.pos);
+            this.pos.add(this.dir.multiplyScalar(this.data.distance));
+            this.el.object3D.position.copy(this.pos);
+          }
+        });
+      </script>
+      <!-- 2D environment omitted for simplicity -->
+      <!-- Lights configuration omitted for simplicity -->
+    </a-scene>
+
+  </body>
+</html>

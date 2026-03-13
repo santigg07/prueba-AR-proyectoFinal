@@ -1,49 +1,1174 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Prueba AR</title>
-    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR Battle Game</title>
 
-  </head>
-  <body>
-   
-   <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
-      <a-assets timeout="30000">
-        <img id="pj" src="vaia.png">
-      </a-assets>
-    
-      <!-- camera used for raycasting --->
-      <a-camera id="camera" position="0 0 0"></a-camera>
-      <!-- marker image that follows camera direction -->
-      <a-image
-        id="marker"
-        src="#pj"
-        width="1.5"
-        height="1.5"
-        follow-camera="distance:3">
-      </a-image>
-      <script>
-        // Component to make image follow camera direction
-        AFRAME.registerComponent('follow-camera', {
-          schema: { distance: { type: 'number', default: 3 } },
-          init() { this.dir = new THREE.Vector3(); this.pos = new THREE.Vector3(); },
-          tick() {
-            const cam = this.el.sceneEl.camera;
-            if (!cam) { return; }
-            cam.getWorldDirection(this.dir);
-            cam.getWorldPosition(this.pos);
-            this.pos.add(this.dir.multiplyScalar(this.data.distance));
-            this.el.object3D.position.copy(this.pos);
-          }
-        });
-      </script>
-      <!-- 2D environment omitted for simplicity -->
-      <!-- Lights configuration omitted for simplicity -->
-    </a-scene>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <!-- Mind AR World Tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-world-aframe.prod.js"></script>
 
-  </body>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* ─── PANTALLA DE INICIO ─── */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: radial-gradient(ellipse at 50% 30%, #0d1f3c 0%, #000 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      transition: opacity 0.6s ease;
+    }
+
+    #splash-screen .logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 4px;
+      text-shadow: 0 0 30px #00e5ff, 0 0 60px #00e5ff44;
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { text-shadow: 0 0 20px #00e5ff, 0 0 40px #00e5ff44; }
+      50% { text-shadow: 0 0 40px #00e5ff, 0 0 80px #00e5ff88, 0 0 120px #00e5ff22; }
+    }
+
+    #splash-screen .subtitle {
+      color: #7ecfff;
+      font-size: 1rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    #splash-screen .hero-icon {
+      font-size: 5rem;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 0 20px #00e5ff88);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    #start-btn {
+      margin-top: 10px;
+      padding: 16px 48px;
+      background: transparent;
+      border: 2px solid #00e5ff;
+      color: #00e5ff;
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      cursor: pointer;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    #start-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: #00e5ff;
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s ease;
+      z-index: -1;
+    }
+
+    #start-btn:hover::before, #start-btn:active::before { transform: scaleX(1); }
+    #start-btn:hover, #start-btn:active { color: #000; }
+
+    #splash-screen .instructions {
+      color: #4a7a9b;
+      font-size: 0.85rem;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    /* ─── HUD OVERLAY ─── */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* Barra superior */
+    #top-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    }
+
+    .hp-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hp-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      color: #7ecfff;
+    }
+
+    .hp-bar {
+      width: 120px;
+      height: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    #boss-hp-fill {
+      height: 100%;
+      background: linear-gradient(to right, #ff4444, #ff0000);
+      border-radius: 5px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px #ff0000;
+      width: 100%;
+    }
+
+    #hero-hp-fill {
+      height: 100%;
+      background: linear-gradient(to right, #44ff88, #00ff44);
+      border-radius: 5px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px #00ff44;
+      width: 100%;
+    }
+
+    #score-display {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px #00e5ff;
+      letter-spacing: 2px;
+    }
+
+    /* Mensaje de instrucción */
+    #instruction-msg {
+      position: absolute;
+      bottom: 180px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      border: 1px solid #00e5ff44;
+      color: #00e5ff;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      text-align: center;
+      white-space: nowrap;
+      animation: blink 1.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Botones de acción */
+    #action-btns {
+      position: absolute;
+      bottom: 30px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 20px;
+      padding: 0 20px;
+      pointer-events: all;
+    }
+
+    #shoot-btn {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ff3300, #cc0000);
+      border: 3px solid #ff6644;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      box-shadow: 0 0 20px #ff330088, 0 4px 15px rgba(0,0,0,0.5);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #shoot-btn:active {
+      transform: scale(0.92);
+      box-shadow: 0 0 40px #ff3300cc;
+    }
+
+    #shoot-btn.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* Ammo counter */
+    #ammo-display {
+      position: absolute;
+      bottom: 105px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+    }
+
+    .ammo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ffdd00;
+      box-shadow: 0 0 6px #ffdd00;
+      transition: all 0.2s ease;
+    }
+
+    .ammo-dot.used {
+      background: #333;
+      box-shadow: none;
+    }
+
+    /* ─── EFECTOS DE IMPACTO ─── */
+    .hit-effect {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      pointer-events: none;
+      animation: hit-anim 0.6s ease forwards;
+      z-index: 200;
+    }
+
+    @keyframes hit-anim {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+      100% { transform: translate(-50%, -80%) scale(1.5); opacity: 0; }
+    }
+
+    /* Flash de pantalla */
+    #screen-flash {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 150;
+      opacity: 0;
+    }
+
+    /* ─── CROSSHAIR ─── */
+    #crosshair {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px; height: 40px;
+      pointer-events: none;
+      z-index: 110;
+      display: none;
+    }
+
+    #crosshair::before,
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,0.8);
+    }
+    #crosshair::before { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+    #crosshair::after { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+
+    .crosshair-corner {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-color: #00e5ff;
+      border-style: solid;
+    }
+    .crosshair-corner.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+    .crosshair-corner.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+    .crosshair-corner.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+    .crosshair-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+    /* ─── PANTALLA DE RESULTADO ─── */
+    #result-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    #result-screen.victory {
+      background: radial-gradient(ellipse at center, #001a0d 0%, #000 70%);
+    }
+
+    #result-screen.defeat {
+      background: radial-gradient(ellipse at center, #1a0000 0%, #000 70%);
+    }
+
+    #result-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: 6px;
+      animation: result-appear 0.5s ease;
+    }
+
+    .victory #result-title {
+      color: #00ff88;
+      text-shadow: 0 0 40px #00ff88, 0 0 80px #00ff8844;
+    }
+
+    .defeat #result-title {
+      color: #ff2200;
+      text-shadow: 0 0 40px #ff2200, 0 0 80px #ff220044;
+    }
+
+    @keyframes result-appear {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    #result-score {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem;
+      color: #fff;
+      letter-spacing: 3px;
+    }
+
+    #result-emoji {
+      font-size: 5rem;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    #restart-btn {
+      margin-top: 10px;
+      padding: 14px 40px;
+      background: transparent;
+      border: 2px solid #00e5ff;
+      color: #00e5ff;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    #restart-btn:hover, #restart-btn:active {
+      background: #00e5ff;
+      color: #000;
+    }
+
+    /* ─── RETICLE hint ─── */
+    #reticle-hint {
+      position: fixed;
+      bottom: 220px;
+      left: 50%; transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .reticle-ring {
+      width: 60px; height: 60px;
+      border: 2px dashed #00e5ff88;
+      border-radius: 50%;
+      animation: spin 3s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #reticle-hint span {
+      color: #00e5ff;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+    }
+
+    /* ─── COOLDOWN RING en botón ─── */
+    #cooldown-ring {
+      position: absolute;
+      width: 96px; height: 96px;
+      pointer-events: none;
+    }
+
+    .ring-svg circle {
+      fill: none;
+      stroke: #ffdd00;
+      stroke-width: 3;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      transform-origin: center;
+      transform: rotate(-90deg);
+      transition: stroke-dashoffset 0.05s linear;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════
+     PANTALLA DE INICIO
+═══════════════════════════════ -->
+<div id="splash-screen">
+  <div class="hero-icon">⚔️</div>
+  <div class="logo">AR BATTLE</div>
+  <div class="subtitle">Marketing Edition</div>
+  <p class="instructions">
+    Apunta la cámara al suelo,<br>
+    toca para colocar el escenario<br>
+    y derrota al boss enemigo
+  </p>
+  <button id="start-btn" onclick="startAR()">▶ INICIAR</button>
+</div>
+
+<!-- ═══════════════════════════════
+     ESCENA AR
+═══════════════════════════════ -->
+<a-scene id="ar-scene"
+  mindar-world="filterMinCF:0.001; filterBeta:0.01; uiScanning:#scanning-overlay"
+  renderer="colorManagement: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+  style="display:none;">
+
+  <a-assets>
+    <!-- Luces integradas como entidades -->
+  </a-assets>
+
+  <a-camera id="main-camera" position="0 0 0" look-controls="false">
+    <a-entity id="reticle-entity"
+      geometry="primitive: ring; radiusInner: 0.04; radiusOuter: 0.05"
+      material="color: #00e5ff; opacity: 0.8; shader: flat"
+      position="0 0 -0.5"
+      rotation="-90 0 0"
+      visible="false">
+    </a-entity>
+  </a-camera>
+
+  <!-- Ancla del mundo -->
+  <a-entity id="world-anchor" mindar-world-target visible="false">
+
+    <!-- Luz ambiental -->
+    <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="0.8"
+             position="1 2 1"></a-light>
+
+    <!-- SUELO -->
+    <a-circle id="ground-plane"
+      radius="0.8"
+      rotation="-90 0 0"
+      material="color: #0a1a0a; opacity: 0.85; transparent: true"
+      visible="false">
+    </a-circle>
+
+    <!-- Grid del suelo -->
+    <a-entity id="grid-lines" visible="false">
+      <!-- Generado por JS -->
+    </a-entity>
+
+    <!-- HÉROE (representado con geometría simple) -->
+    <a-entity id="hero" visible="false" position="0 0 0.4">
+      <!-- Cuerpo -->
+      <a-cylinder radius="0.04" height="0.15" color="#2244ff"
+                  position="0 0.08 0" shadow="receive: false"></a-cylinder>
+      <!-- Cabeza -->
+      <a-sphere radius="0.045" color="#ffddaa"
+                position="0 0.2 0" shadow="receive: false"></a-sphere>
+      <!-- Espada -->
+      <a-box width="0.008" height="0.12" depth="0.008" color="#aaccff"
+             position="0.06 0.12 0" rotation="0 0 -30"></a-box>
+      <!-- Escudo -->
+      <a-box width="0.06" height="0.07" depth="0.01" color="#3355cc"
+             position="-0.06 0.1 0"></a-box>
+    </a-entity>
+
+    <!-- BOSS (representado con geometría simple) -->
+    <a-entity id="boss" visible="false" position="0 0 -0.4">
+      <!-- Cuerpo grande -->
+      <a-cylinder id="boss-body" radius="0.08" height="0.2" color="#880000"
+                  position="0 0.1 0" shadow="receive: false"></a-cylinder>
+      <!-- Cabeza con cuernos -->
+      <a-sphere radius="0.07" color="#660000"
+                position="0 0.26 0" shadow="receive: false"></a-sphere>
+      <!-- Cuerno izquierdo -->
+      <a-cone radius-bottom="0.015" radius-top="0" height="0.07" color="#440000"
+              position="-0.04 0.34 0" rotation="0 0 -20"></a-cone>
+      <!-- Cuerno derecho -->
+      <a-cone radius-bottom="0.015" radius-top="0" height="0.07" color="#440000"
+              position="0.04 0.34 0" rotation="0 0 20"></a-cone>
+      <!-- Ojos -->
+      <a-sphere radius="0.012" color="#ff4400"
+                position="-0.025 0.28 0.065" emissive="#ff4400" emissive-intensity="1"></a-sphere>
+      <a-sphere radius="0.012" color="#ff4400"
+                position="0.025 0.28 0.065" emissive="#ff4400" emissive-intensity="1"></a-sphere>
+    </a-entity>
+
+    <!-- Pool de proyectiles (reutilizables) -->
+    <a-entity id="bullet-pool"></a-entity>
+
+    <!-- Partículas de explosión (pool) -->
+    <a-entity id="particles-pool"></a-entity>
+
+  </a-entity>
+
+</a-scene>
+
+<!-- ═══════════════════════════════
+     HUD
+═══════════════════════════════ -->
+<div id="hud">
+
+  <!-- Barra superior -->
+  <div id="top-bar">
+    <div class="hp-container">
+      <span class="hp-label">🔴 BOSS HP</span>
+      <div class="hp-bar"><div id="boss-hp-fill"></div></div>
+    </div>
+
+    <div id="score-display">0</div>
+
+    <div class="hp-container" style="align-items:flex-end">
+      <span class="hp-label">💙 HÉROE</span>
+      <div class="hp-bar"><div id="hero-hp-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Crosshair -->
+  <div id="crosshair">
+    <div class="crosshair-corner tl"></div>
+    <div class="crosshair-corner tr"></div>
+    <div class="crosshair-corner bl"></div>
+    <div class="crosshair-corner br"></div>
+  </div>
+
+  <!-- Mensaje instrucción -->
+  <div id="instruction-msg">📍 TOCA EL SUELO PARA COLOCAR EL ESCENARIO</div>
+
+  <!-- Hint de reticle -->
+  <div id="reticle-hint">
+    <div class="reticle-ring"></div>
+    <span>APUNTA AL SUELO</span>
+  </div>
+
+  <!-- Ammo dots -->
+  <div id="ammo-display"></div>
+
+  <!-- Botones -->
+  <div id="action-btns">
+    <svg id="cooldown-ring" class="ring-svg" viewBox="0 0 96 96">
+      <circle id="cooldown-circle" cx="48" cy="48" r="45"/>
+    </svg>
+    <button id="shoot-btn" class="disabled" onclick="shoot()">🔫</button>
+  </div>
+
+</div>
+
+<!-- Flash de pantalla -->
+<div id="screen-flash"></div>
+
+<!-- ═══════════════════════════════
+     PANTALLA DE RESULTADO
+═══════════════════════════════ -->
+<div id="result-screen">
+  <div id="result-emoji">🎉</div>
+  <div id="result-title">VICTORIA</div>
+  <div id="result-score">PUNTUACIÓN: 0</div>
+  <button id="restart-btn" onclick="restartGame()">↩ JUGAR DE NUEVO</button>
+</div>
+
+<!-- ═══════════════════════════════
+     JAVASCRIPT DEL JUEGO
+═══════════════════════════════ -->
+<script>
+// ──────────────────────────────────────────
+//  ESTADO DEL JUEGO
+// ──────────────────────────────────────────
+const GAME = {
+  state: 'splash',   // splash | scanning | placing | playing | result
+  bossMaxHP: 5,
+  bossHP: 5,
+  heroMaxHP: 3,
+  heroHP: 3,
+  score: 0,
+  scenePlaced: false,
+  shootCooldown: false,
+  cooldownMs: 800,
+  maxAmmo: 5,
+  currentAmmo: 5,
+  reloading: false,
+  bossAttackInterval: null,
+  bossPhase: 1,  // 1 = normal, 2 = enraged (hp < 50%)
+};
+
+// ──────────────────────────────────────────
+//  REFERENCIAS DOM
+// ──────────────────────────────────────────
+const DOM = {
+  splash: document.getElementById('splash-screen'),
+  hud: document.getElementById('hud'),
+  scene: document.getElementById('ar-scene'),
+  instructionMsg: document.getElementById('instruction-msg'),
+  bossHPFill: document.getElementById('boss-hp-fill'),
+  heroHPFill: document.getElementById('hero-hp-fill'),
+  scoreDisplay: document.getElementById('score-display'),
+  shootBtn: document.getElementById('shoot-btn'),
+  ammoDisplay: document.getElementById('ammo-display'),
+  crosshair: document.getElementById('crosshair'),
+  reticleHint: document.getElementById('reticle-hint'),
+  screenFlash: document.getElementById('screen-flash'),
+  resultScreen: document.getElementById('result-screen'),
+  resultTitle: document.getElementById('result-title'),
+  resultEmoji: document.getElementById('result-emoji'),
+  resultScore: document.getElementById('result-score'),
+  cooldownCircle: document.getElementById('cooldown-circle'),
+};
+
+// ──────────────────────────────────────────
+//  AR - REFERENCIAS A-FRAME
+// ──────────────────────────────────────────
+let AR = {};
+
+function initARRefs() {
+  AR.anchor    = document.getElementById('world-anchor');
+  AR.hero      = document.getElementById('hero');
+  AR.boss      = document.getElementById('boss');
+  AR.ground    = document.getElementById('ground-plane');
+  AR.bullets   = document.getElementById('bullet-pool');
+  AR.particles = document.getElementById('particles-pool');
+  AR.reticle   = document.getElementById('reticle-entity');
+}
+
+// ──────────────────────────────────────────
+//  INICIO DE AR
+// ──────────────────────────────────────────
+function startAR() {
+  DOM.splash.style.opacity = '0';
+  setTimeout(() => {
+    DOM.splash.style.display = 'none';
+    DOM.scene.style.display = 'block';
+    DOM.hud.style.display = 'block';
+    DOM.reticleHint.style.display = 'flex';
+    GAME.state = 'scanning';
+    buildAmmoUI();
+  }, 600);
+
+  // Esperar a que A-Frame esté listo
+  const scene = document.getElementById('ar-scene');
+  scene.addEventListener('loaded', () => {
+    initARRefs();
+    setupWorldTracking();
+  });
+}
+
+// ──────────────────────────────────────────
+//  WORLD TRACKING & PLACEMENT
+// ──────────────────────────────────────────
+function setupWorldTracking() {
+  const scene = document.getElementById('ar-scene');
+
+  // Cuando el tracking está activo, mostrar reticle
+  scene.addEventListener('arReady', () => {
+    DOM.reticleHint.style.display = 'flex';
+    DOM.instructionMsg.textContent = '📍 TOCA EL SUELO PARA COLOCAR EL ESCENARIO';
+    DOM.instructionMsg.style.display = 'block';
+    AR.reticle.setAttribute('visible', true);
+  });
+
+  // Touch para colocar escenario
+  document.addEventListener('touchstart', onTouchPlace, { once: false });
+  document.addEventListener('click', onTouchPlace, { once: false });
+}
+
+function onTouchPlace(e) {
+  // Ignorar clicks en botones
+  if (e.target.closest('button')) return;
+
+  if (GAME.state === 'scanning' || GAME.state === 'placing') {
+    placeScene();
+  }
+}
+
+function placeScene() {
+  if (GAME.scenePlaced) return;
+  GAME.scenePlaced = true;
+  GAME.state = 'playing';
+
+  // Ocultar hints
+  DOM.reticleHint.style.display = 'none';
+  AR.reticle.setAttribute('visible', false);
+
+  // Mostrar el escenario
+  AR.anchor.setAttribute('visible', true);
+  AR.ground.setAttribute('visible', true);
+  AR.hero.setAttribute('visible', true);
+  AR.boss.setAttribute('visible', true);
+
+  // Animar aparición
+  AR.hero.setAttribute('animation__appear', 'property: scale; from: 0 0 0; to: 1 1 1; dur: 600; easing: easeOutElastic');
+  AR.boss.setAttribute('animation__appear', 'property: scale; from: 0 0 0; to: 1 1 1; dur: 800; easing: easeOutElastic; delay: 300');
+
+  // Animación idle del boss (rebote)
+  AR.boss.setAttribute('animation__idle',
+    'property: position; from: 0 0 -0.4; to: 0 0.02 -0.4; dir: alternate; loop: true; dur: 1200; easing: easeInOutSine');
+
+  // Animación idle héroe
+  AR.hero.setAttribute('animation__idle',
+    'property: rotation; from: 0 -5 0; to: 0 5 0; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine');
+
+  // Grid de suelo
+  buildGroundGrid();
+
+  // Actualizar HUD
+  DOM.instructionMsg.style.display = 'none';
+  DOM.crosshair.style.display = 'block';
+  DOM.shootBtn.classList.remove('disabled');
+
+  updateHPBars();
+  startBossAI();
+
+  flashScreen('#00ff4422', 300);
+  spawnHitEffect('⚔️ BATALLA INICIADA', '#00e5ff');
+}
+
+// ──────────────────────────────────────────
+//  GROUND GRID (decorativo)
+// ──────────────────────────────────────────
+function buildGroundGrid() {
+  const gridEl = document.getElementById('grid-lines');
+  gridEl.setAttribute('visible', true);
+
+  for (let i = -3; i <= 3; i++) {
+    const step = 0.25;
+    // Línea horizontal
+    const lh = document.createElement('a-entity');
+    lh.setAttribute('line', `start: ${-0.75} 0.001 ${i * step}; end: ${0.75} 0.001 ${i * step}; color: #00e5ff; opacity: 0.15`);
+    gridEl.appendChild(lh);
+    // Línea vertical
+    const lv = document.createElement('a-entity');
+    lv.setAttribute('line', `start: ${i * step} 0.001 -0.75; end: ${i * step} 0.001 0.75; color: #00e5ff; opacity: 0.15`);
+    gridEl.appendChild(lv);
+  }
+}
+
+// ──────────────────────────────────────────
+//  DISPARO
+// ──────────────────────────────────────────
+function shoot() {
+  if (GAME.state !== 'playing') return;
+  if (GAME.shootCooldown) return;
+  if (GAME.currentAmmo <= 0) { startReload(); return; }
+
+  GAME.shootCooldown = true;
+  GAME.currentAmmo--;
+  updateAmmoUI();
+
+  // Crear bala
+  const bullet = document.createElement('a-sphere');
+  bullet.setAttribute('radius', '0.02');
+  bullet.setAttribute('color', '#ffff00');
+  bullet.setAttribute('emissive', '#ffcc00');
+  bullet.setAttribute('emissive-intensity', '2');
+  bullet.setAttribute('position', '0 0.2 0.4'); // desde el héroe
+
+  // Animación hacia el boss
+  bullet.setAttribute('animation__move', {
+    property: 'position',
+    to: '0 0.15 -0.4',
+    dur: 350,
+    easing: 'linear'
+  });
+
+  // Animación de scale (desaparece al llegar)
+  bullet.setAttribute('animation__scale', {
+    property: 'scale',
+    from: '1 1 1',
+    to: '0 0 0',
+    dur: 100,
+    delay: 330,
+    easing: 'linear'
+  });
+
+  AR.anchor.appendChild(bullet);
+
+  // Detectar impacto
+  setTimeout(() => {
+    hitBoss();
+    bullet.parentNode && bullet.parentNode.removeChild(bullet);
+  }, 350);
+
+  // Efecto de disparo en el héroe
+  AR.hero.setAttribute('animation__shoot',
+    'property: rotation; from: 0 -10 0; to: 0 10 0; dur: 150; easing: easeInOutSine');
+
+  // Cooldown visual
+  startShootCooldown();
+}
+
+function startShootCooldown() {
+  const circle = DOM.cooldownCircle;
+  const circumference = 283;
+  let start = null;
+  const duration = GAME.cooldownMs;
+
+  function animateCooldown(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    circle.style.strokeDashoffset = circumference * (1 - progress);
+    if (progress < 1) {
+      requestAnimationFrame(animateCooldown);
+    } else {
+      circle.style.strokeDashoffset = circumference;
+      GAME.shootCooldown = false;
+      if (GAME.currentAmmo <= 0 && !GAME.reloading) startReload();
+    }
+  }
+  requestAnimationFrame(animateCooldown);
+}
+
+function startReload() {
+  if (GAME.reloading) return;
+  GAME.reloading = true;
+  DOM.shootBtn.classList.add('disabled');
+  spawnHitEffect('🔄 RECARGANDO...', '#ffdd00');
+
+  setTimeout(() => {
+    GAME.currentAmmo = GAME.maxAmmo;
+    GAME.reloading = false;
+    DOM.shootBtn.classList.remove('disabled');
+    updateAmmoUI();
+    spawnHitEffect('✅ CARGADO', '#00ff88');
+  }, 2000);
+}
+
+// ──────────────────────────────────────────
+//  IMPACTO AL BOSS
+// ──────────────────────────────────────────
+function hitBoss() {
+  if (GAME.state !== 'playing') return;
+
+  GAME.bossHP--;
+  GAME.score += 100 + (GAME.bossPhase === 2 ? 50 : 0);
+  updateHPBars();
+  updateScore();
+
+  // Efecto de hit en el boss
+  const bossBody = document.getElementById('boss-body');
+  bossBody.setAttribute('animation__hit', 'property: material.color; from: #ff4400; to: #880000; dur: 300; easing: linear');
+
+  // Shake del boss
+  AR.boss.setAttribute('animation__shake', 'property: position; from: -0.03 0 -0.4; to: 0.03 0 -0.4; dir: alternate; loop: 2; dur: 80; easing: linear');
+
+  spawnExplosion('0 0.2 -0.4');
+  spawnHitEffect('💥 -100HP', '#ff4400');
+  flashScreen('#ff220033', 150);
+
+  // Fase enraged
+  if (GAME.bossHP <= Math.floor(GAME.bossMaxHP / 2) && GAME.bossPhase === 1) {
+    GAME.bossPhase = 2;
+    enterBossRage();
+  }
+
+  if (GAME.bossHP <= 0) {
+    victory();
+  }
+}
+
+function enterBossRage() {
+  spawnHitEffect('😡 ¡BOSS ENFURECIDO!', '#ff0000');
+  flashScreen('#ff000055', 500);
+
+  // Boss se vuelve más rápido y rojo
+  const bossBody = document.getElementById('boss-body');
+  bossBody.setAttribute('color', '#cc0000');
+  bossBody.setAttribute('emissive', '#880000');
+  bossBody.setAttribute('emissive-intensity', '0.5');
+
+  // Ataques más frecuentes
+  clearInterval(GAME.bossAttackInterval);
+  GAME.bossAttackInterval = setInterval(bossAttack, 2000);
+}
+
+// ──────────────────────────────────────────
+//  AI DEL BOSS
+// ──────────────────────────────────────────
+function startBossAI() {
+  GAME.bossAttackInterval = setInterval(bossAttack, 3500);
+}
+
+function bossAttack() {
+  if (GAME.state !== 'playing') return;
+
+  // Proyectil del boss hacia el héroe
+  const bossProjectile = document.createElement('a-sphere');
+  bossProjectile.setAttribute('radius', '0.03');
+  bossProjectile.setAttribute('color', '#ff0000');
+  bossProjectile.setAttribute('emissive', '#ff0000');
+  bossProjectile.setAttribute('emissive-intensity', '2');
+  bossProjectile.setAttribute('position', '0 0.2 -0.4');
+
+  bossProjectile.setAttribute('animation__move', {
+    property: 'position',
+    to: '0 0.2 0.4',
+    dur: 600,
+    easing: 'linear'
+  });
+
+  bossProjectile.setAttribute('animation__scale', {
+    property: 'scale',
+    from: '1 1 1',
+    to: '0 0 0',
+    dur: 100,
+    delay: 580,
+  });
+
+  AR.anchor.appendChild(bossProjectile);
+
+  setTimeout(() => {
+    damageHero();
+    bossProjectile.parentNode && bossProjectile.parentNode.removeChild(bossProjectile);
+  }, 600);
+
+  // Animación de ataque del boss
+  AR.boss.setAttribute('animation__attack',
+    'property: position; from: 0 0 -0.4; to: 0 0 -0.25; dir: alternate; dur: 200; easing: easeOutQuad');
+}
+
+function damageHero() {
+  if (GAME.state !== 'playing') return;
+
+  GAME.heroHP--;
+  updateHPBars();
+  flashScreen('#ff000066', 300);
+  spawnHitEffect('💔 ¡DAÑO!', '#ff4444');
+
+  // Shake de cámara simulado (flash rojo)
+  DOM.screenFlash.style.background = 'radial-gradient(circle, transparent 40%, #ff000044 100%)';
+  DOM.screenFlash.style.opacity = '1';
+  setTimeout(() => { DOM.screenFlash.style.opacity = '0'; }, 400);
+
+  if (GAME.heroHP <= 0) {
+    defeat();
+  }
+}
+
+// ──────────────────────────────────────────
+//  EXPLOSIÓN (partículas simples)
+// ──────────────────────────────────────────
+function spawnExplosion(posStr) {
+  const colors = ['#ff4400', '#ffaa00', '#ffff00', '#ff6600'];
+  const pos = posStr.split(' ').map(Number);
+
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('a-sphere');
+    p.setAttribute('radius', '0.015');
+    p.setAttribute('color', colors[Math.floor(Math.random() * colors.length)]);
+    p.setAttribute('emissive', '#ff6600');
+    p.setAttribute('emissive-intensity', '1');
+    p.setAttribute('position', posStr);
+
+    const tx = (Math.random() - 0.5) * 0.3 + pos[0];
+    const ty = pos[1] + Math.random() * 0.2;
+    const tz = (Math.random() - 0.5) * 0.3 + pos[2];
+
+    p.setAttribute('animation__move', {
+      property: 'position',
+      to: `${tx} ${ty} ${tz}`,
+      dur: 400 + Math.random() * 200,
+      easing: 'easeOutQuad'
+    });
+    p.setAttribute('animation__fade', {
+      property: 'material.opacity',
+      from: 1, to: 0,
+      dur: 400,
+      delay: 200,
+      easing: 'linear'
+    });
+
+    AR.anchor.appendChild(p);
+    setTimeout(() => p.parentNode && p.parentNode.removeChild(p), 700);
+  }
+}
+
+// ──────────────────────────────────────────
+//  EFECTOS UI
+// ──────────────────────────────────────────
+function spawnHitEffect(text, color = '#fff') {
+  const el = document.createElement('div');
+  el.className = 'hit-effect';
+  el.textContent = text;
+  el.style.color = color;
+  el.style.fontFamily = "'Orbitron', monospace";
+  el.style.fontSize = '1.2rem';
+  el.style.fontWeight = '700';
+  el.style.textShadow = `0 0 10px ${color}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+
+function flashScreen(color, duration) {
+  DOM.screenFlash.style.background = color;
+  DOM.screenFlash.style.transition = 'opacity 0.1s ease';
+  DOM.screenFlash.style.opacity = '1';
+  setTimeout(() => {
+    DOM.screenFlash.style.transition = `opacity ${duration / 1000}s ease`;
+    DOM.screenFlash.style.opacity = '0';
+  }, 50);
+}
+
+// ──────────────────────────────────────────
+//  HUD UPDATES
+// ──────────────────────────────────────────
+function updateHPBars() {
+  const bossPercent = Math.max(0, (GAME.bossHP / GAME.bossMaxHP) * 100);
+  const heroPercent = Math.max(0, (GAME.heroHP / GAME.heroMaxHP) * 100);
+  DOM.bossHPFill.style.width = bossPercent + '%';
+  DOM.heroHPFill.style.width = heroPercent + '%';
+}
+
+function updateScore() {
+  DOM.scoreDisplay.textContent = GAME.score.toString().padStart(4, '0');
+}
+
+function buildAmmoUI() {
+  DOM.ammoDisplay.innerHTML = '';
+  for (let i = 0; i < GAME.maxAmmo; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'ammo-dot';
+    dot.id = `ammo-${i}`;
+    DOM.ammoDisplay.appendChild(dot);
+  }
+}
+
+function updateAmmoUI() {
+  for (let i = 0; i < GAME.maxAmmo; i++) {
+    const dot = document.getElementById(`ammo-${i}`);
+    if (dot) dot.classList.toggle('used', i >= GAME.currentAmmo);
+  }
+}
+
+// ──────────────────────────────────────────
+//  VICTORIA / DERROTA
+// ──────────────────────────────────────────
+function victory() {
+  GAME.state = 'result';
+  clearInterval(GAME.bossAttackInterval);
+
+  // Animación de muerte del boss
+  AR.boss.setAttribute('animation__die', 'property: scale; to: 0 0 0; dur: 800; easing: easeInBack');
+  AR.boss.setAttribute('animation__spin', 'property: rotation; to: 0 720 0; dur: 800; easing: easeInBack');
+
+  spawnExplosion('0 0.2 -0.4');
+  spawnExplosion('0.1 0.3 -0.35');
+  spawnExplosion('-0.1 0.1 -0.45');
+
+  setTimeout(() => {
+    DOM.resultScreen.className = 'victory';
+    DOM.resultScreen.style.display = 'flex';
+    DOM.resultTitle.textContent = '¡VICTORIA!';
+    DOM.resultEmoji.textContent = '🏆';
+    DOM.resultScore.textContent = `PUNTUACIÓN: ${GAME.score}`;
+    flashScreen('#00ff8844', 1000);
+  }, 1000);
+}
+
+function defeat() {
+  GAME.state = 'result';
+  clearInterval(GAME.bossAttackInterval);
+
+  setTimeout(() => {
+    DOM.resultScreen.className = 'defeat';
+    DOM.resultScreen.style.display = 'flex';
+    DOM.resultTitle.textContent = '¡DERROTA!';
+    DOM.resultEmoji.textContent = '💀';
+    DOM.resultScore.textContent = `PUNTUACIÓN: ${GAME.score}`;
+    flashScreen('#ff000066', 1000);
+  }, 600);
+}
+
+function restartGame() {
+  // Reset estado
+  GAME.bossHP = GAME.bossMaxHP;
+  GAME.heroHP = GAME.heroMaxHP;
+  GAME.score = 0;
+  GAME.scenePlaced = false;
+  GAME.shootCooldown = false;
+  GAME.currentAmmo = GAME.maxAmmo;
+  GAME.reloading = false;
+  GAME.bossPhase = 1;
+  GAME.state = 'scanning';
+
+  clearInterval(GAME.bossAttackInterval);
+
+  // Reset UI
+  DOM.resultScreen.style.display = 'none';
+  DOM.instructionMsg.style.display = 'block';
+  DOM.instructionMsg.textContent = '📍 TOCA EL SUELO PARA COLOCAR EL ESCENARIO';
+  DOM.crosshair.style.display = 'none';
+  DOM.reticleHint.style.display = 'flex';
+  DOM.shootBtn.classList.add('disabled');
+  updateHPBars();
+  updateScore();
+  buildAmmoUI();
+
+  // Reset AR
+  if (AR.anchor) {
+    AR.anchor.setAttribute('visible', false);
+    AR.hero.setAttribute('visible', false);
+    AR.boss.setAttribute('visible', false);
+    AR.ground.setAttribute('visible', false);
+    AR.boss.setAttribute('scale', '1 1 1');
+    AR.boss.setAttribute('rotation', '0 0 0');
+    const bossBody = document.getElementById('boss-body');
+    if (bossBody) bossBody.setAttribute('color', '#880000');
+  }
+}
+
+// ──────────────────────────────────────────
+//  PREVENIR ZOOM en iOS
+// ──────────────────────────────────────────
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+
+</body>
 </html>
