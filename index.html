@@ -142,8 +142,7 @@
 <a-scene id="scene"
   webxr="requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #overlay"
   renderer="colorManagement:true; logarithmicDepthBuffer:true"
-  vr-mode-ui="enabled:false"
-  style="display:none">
+  vr-mode-ui="enabled:false">
 
   <a-assets>
     <!-- 
@@ -262,22 +261,28 @@ const G = {
    INICIO
 ═══════════════════════════════════════ */
 function startGame() {
+  console.log('startGame called');
   document.getElementById('splash').style.display = 'none';
 
   if (!navigator.xr) {
+    console.log('No WebXR support');
     showCompatNote('Tu navegador no soporta WebXR AR. Usa Chrome en Android.');
     startFallback();
     return;
   }
 
   navigator.xr.isSessionSupported('immersive-ar').then(ok => {
+    console.log('WebXR AR supported:', ok);
     if (!ok) {
       showCompatNote('WebXR AR no disponible en este dispositivo. Mostrando modo demo.');
       startFallback();
     } else {
       initWebXR();
     }
-  }).catch(() => startFallback());
+  }).catch(err => {
+    console.log('Error checking WebXR:', err);
+    startFallback();
+  });
 }
 
 /* ── WebXR con hit-test ── */
