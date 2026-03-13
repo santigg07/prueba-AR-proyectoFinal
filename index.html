@@ -17,18 +17,33 @@
       </a-assets>
     
       <!-- Camera with child image so it stays centered in front of the user -->
-      <a-camera position="0 0 0">
-        <!-- image always 3 units ahead of the camera, will follow the camera movement -->
-        
-    
+      <a-camera id="camera" position="0 0 0" raycaster="objects: .ar-floor" cursor="rayOrigin:">
+        <!-- image always 3 units ahead of the camera, will follow the camera movement -->    
         <!-- 2D environment omitted for simplicity -->
         <a-image
+          id="marker"
+          class="ar-floor"
           src="#pj"
           position="0 0 -3"
           width="1.5"
-          height="1.5">
+          height="1.5"
+          visible="false">          
         </a-image>
       </a-camera>
+      <script>
+        const scene = document.querySelector('a-scene');
+        const marker = document.querySelector('marker');
+
+        // al hacer click/tocar en el vídeo AR
+        scene.addEventListener('click', function (evt) {
+          const inter = evt.detail && evt.detail.intersection;
+          if (inter && inter.point) {
+            // mueve la imagen al punto dectectado y muestra la imagen
+            marker.setAttribute('position', inter.point);
+            marker.setAttribute('visible', 'true');
+          }
+        })
+      </script>
       <!-- 2D environment omitted for simplicity -->
       <!-- Lights configuration omitted for simplicity -->
     </a-scene>
