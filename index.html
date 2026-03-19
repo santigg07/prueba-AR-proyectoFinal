@@ -68,6 +68,7 @@
       height="1"
       position="0 0.5 0">
     </a-image>
+    <a-ring radius-inner="0.2" radius-outer="0.25" rotation="-90 0 0" color="yellow"></a-ring>
   </a-entity>
 
 </a-scene>
@@ -79,41 +80,52 @@ let maxVida = 10;
 let barra = document.querySelector("#vida");
 
 let placed = false;
+let xrSession = null;
+let hitTestSource = null;
+let referenceSpace = null;
 
+// BOTÓN AR
 document.querySelector("#startBtn").addEventListener("click", async () => {
   const scene = document.querySelector("a-scene");
 
-  if (scene.renderer.xr) {
-    scene.renderer.xr.enabled = true;
-    await scene.renderer.xr.setReferenceSpaceType('local-floor');
-    scene.enterAR();
+  await scene.enterAR();
+
+  xrSession = scene.renderer.xr.getSession();
+
+  referenceSpace = await xrSession.requestReferenceSpace("viewer");
+  const viewerSpace = await xrSession.requestReferenceSpace("viewer");
+
+  hitTestSource = await xrSession.requestHitTestSource({
+    space: viewerSpace
+  });
+
+});
+
+// LOOP DE HIT TEST
+AFRAME.scenes[0].renderer.setAnimationLoop((timestamp, frame) => {
+  if (!frame || !hitTestSource) return;
+
+  const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+  if (hitTestResults.length > 0 && !placed) {
+    const hit = hitTestResults[0];
+    const pose = hit.getPose(AFRAME.scenes[0].renderer.xr.getReferenceSpace());
+
+    if (pose) {
+      const pos = pose.transform.position;
+
+      boss.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
+    }
   }
 });
 
-// Detectar suelo y colocar boss
-AFRAME.registerComponent('tap-place', {
-  init: function () {
-    const scene = this.el.sceneEl;
-
-    scene.addEventListener('click', (e) => {
-
-      if (placed) return;
-
-      let camera = scene.camera;
-      let direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-
-      let position = camera.position.clone().add(direction.multiplyScalar(2));
-
-      boss.setAttribute("position", position);
-      boss.setAttribute("visible", true);
-
-      placed = true;
-    });
+// TAP PARA FIJAR
+window.addEventListener("click", () => {
+  if (!placed && boss.getAttribute("position")) {
+    boss.setAttribute("visible", true);
+    placed = true;
   }
 });
-
-document.querySelector("a-scene").setAttribute("tap-place", "");
 
 // ATAQUE
 boss.addEventListener("click", () => {
