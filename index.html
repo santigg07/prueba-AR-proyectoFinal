@@ -1,144 +1,22 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Mini AR Boss Fight</title>
+<head>
+  <meta charset="utf-8">
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+</head>
 
-    <!-- A-Frame + AR.js -->
-    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+<body style="margin:0; overflow:hidden;">
 
-    <style>
-      body { margin: 0; overflow: hidden; }
+<a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;">
 
-      /* UI estilo juego */
-      #ui {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        color: white;
-        font-family: Arial;
-        z-index: 10;
-      }
+  <a-marker preset="hiro">
+    <a-box position="0 0.5 0" color="red"></a-box>
+  </a-marker>
 
-      #vidaBar {
-        width: 200px;
-        height: 20px;
-        background: red;
-        margin-top: 5px;
-        border: 2px solid white;
-      }
+  <a-entity camera></a-entity>
 
-      #vida {
-        height: 100%;
-        width: 100%;
-        background: lime;
-      }
+</a-scene>
 
-      #mensaje {
-        position: fixed;
-        top: 50%;
-        width: 100%;
-        text-align: center;
-        font-size: 30px;
-        color: yellow;
-        display: none;
-      }
-    </style>
-  </head>
-
-  <body>
-
-    <!-- UI -->
-    <div id="ui">
-      Boss HP
-      <div id="vidaBar">
-        <div id="vida"></div>
-      </div>
-    </div>
-
-    <div id="mensaje">¡BOSS DERROTADO!</div>
-
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-
-      <a-assets>
-        <img id="bossImg" src="vaia.png">
-      </a-assets>
-
-      <a-marker preset="hiro">
-
-        <!-- SUELO -->
-        <a-cylinder 
-          position="0 0 0"
-          radius="1"
-          height="0.2"
-          color="#654321">
-        </a-cylinder>
-
-        <!-- BOSS PNG -->
-        <a-image 
-          id="boss"
-          src="#bossImg"
-          position="0 1 0"
-          width="1"
-          height="1"
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 6000"
-          class="clickable">
-        </a-image>
-
-        <!-- EFECTO -->
-        <a-sphere 
-          id="hitEffect"
-          position="0 1 0"
-          radius="0.2"
-          color="yellow"
-          visible="false">
-        </a-sphere>
-
-      </a-marker>
-
-      <a-entity camera cursor="rayOrigin: mouse"></a-entity>
-
-    </a-scene>
-
-    <a-box position="0 0.5 0" color="blue"></a-box>
-
-    <script>
-      window.addEventListener('load', () => {
-
-        let vida = 10;
-        const maxVida = 10;
-
-        const boss = document.querySelector('#boss');
-        const barra = document.querySelector('#vida');
-        const efecto = document.querySelector('#hitEffect');
-        const mensaje = document.querySelector('#mensaje');
-
-        boss.addEventListener('click', () => {
-
-          if (vida <= 0) return;
-
-          vida--;
-
-          let porcentaje = (vida / maxVida) * 100;
-          barra.style.width = porcentaje + "%";
-
-          efecto.setAttribute('visible', true);
-
-          setTimeout(() => {
-            efecto.setAttribute('visible', false);
-          }, 100);
-
-          if (vida <= 0) {
-            boss.setAttribute('visible', false);
-            mensaje.style.display = "block";
-          }
-
-        });
-
-      });
-    </script>
-
-  </body>
+</body>
 </html>
