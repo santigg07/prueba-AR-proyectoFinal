@@ -83,7 +83,6 @@
           position="0 1 0"
           width="1"
           height="1"
-          look-at="[camera]"
           animation="property: rotation; to: 0 360 0; loop: true; dur: 6000"
           class="clickable">
         </a-image>
@@ -103,47 +102,42 @@
 
     </a-scene>
 
+    <a-box position="0 0.5 0" color="blue"></a-box>
+
     <script>
-    let vida = 10;
-    const maxVida = 10;
+      window.addEventListener('load', () => {
 
-    const boss = document.querySelector('#boss');
-    const barra = document.querySelector('#vida');
-    const efecto = document.querySelector('#hitEffect');
-    const mensaje = document.querySelector('#mensaje');
+        let vida = 10;
+        const maxVida = 10;
 
-    boss.addEventListener('click', () => {
+        const boss = document.querySelector('#boss');
+        const barra = document.querySelector('#vida');
+        const efecto = document.querySelector('#hitEffect');
+        const mensaje = document.querySelector('#mensaje');
 
-      if (vida <= 0) return;
+        boss.addEventListener('click', () => {
 
-      // Reducir vida
-      vida--;
+          if (vida <= 0) return;
 
-      // Actualizar UI
-      let porcentaje = (vida / maxVida) * 100;
-      barra.style.width = porcentaje + "%";
+          vida--;
 
-      // Efecto visual
-      efecto.setAttribute('visible', true);
+          let porcentaje = (vida / maxVida) * 100;
+          barra.style.width = porcentaje + "%";
 
-      setTimeout(() => {
-        efecto.setAttribute('visible', false);
-      }, 100);
+          efecto.setAttribute('visible', true);
 
-      // Feedback: cambiar color momentáneamente
-      boss.setAttribute('color', 'white');
+          setTimeout(() => {
+            efecto.setAttribute('visible', false);
+          }, 100);
 
-      setTimeout(() => {
-        boss.setAttribute('color', 'red');
-      }, 100);
+          if (vida <= 0) {
+            boss.setAttribute('visible', false);
+            mensaje.style.display = "block";
+          }
 
-      // Muerte
-      if (vida <= 0) {
-        boss.setAttribute('visible', false);
-        mensaje.style.display = "block";
-      }
+        });
 
-    });
+      });
     </script>
 
   </body>
