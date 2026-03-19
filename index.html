@@ -1,203 +1,49 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>AR Combat Prototype</title>
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-    #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
-    #start { padding: 14px 30px; background: #00e5ff; border: none; border-radius: 8px; font-weight: 900; font-size: 1rem; cursor: pointer; }
-    #hud { position: fixed; top: 12px; left: 12px; color: #fff; font-weight: 700; text-shadow: 0 0 10px #000; z-index: 10; }
-    #shoot { position: fixed; bottom: 24px; right: 24px; width: 72px; height: 72px; border-radius: 50%; background: rgba(255,80,80,0.9); border: 2px solid #fff; color: #fff; font-size: 1.5rem; font-weight: 900; display: none; cursor: pointer; z-index: 10; }
-    #message { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); color: #00e5ff; text-shadow: 0 0 16px #000; font-weight: 700; display: none; z-index: 10; }
-  </style>
-</head>
-<body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Prueba AR</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-<div id="overlay">
-  <button id="start">Iniciar AR</button>
-</div>
+  </head>
+  <body>
+   
+   <a-scene xr-mode-ui="enabled: true; XRMode: xr;">
+      <a-assets timeout="30000">
+        <img id="pj" src="vaia.png">
+      </a-assets>
+    
+      <!-- camera used for raycasting --->
+      <a-camera id="camera" position="0 0 0"></a-camera>
+      <!-- marker image that follows camera direction -->
+      <a-image
+        id="marker"
+        src="#pj"
+        width="1.5"
+        height="1.5"
+        follow-camera="distance:3">
+      </a-image>
+      <script>
+        // Component to make image follow camera direction
+        AFRAME.registerComponent('follow-camera', {
+          schema: { distance: { type: 'number', default: 3 } },
+          init() { this.dir = new THREE.Vector3(); this.pos = new THREE.Vector3(); },
+          tick() {
+            const cam = this.el.sceneEl.camera;
+            if (!cam) { return; }
+            cam.getWorldDirection(this.dir);
+            cam.getWorldPosition(this.pos);
+            this.pos.add(this.dir.multiplyScalar(this.data.distance));
+            this.el.object3D.position.copy(this.pos);
+          }
+        });
+      </script>
+      <!-- 2D environment omitted for simplicity -->
+      <!-- Lights configuration omitted for simplicity -->
+    </a-scene>
 
-<div id="hud">
-  <div>Boss HP: <span id="bossHp">5</span></div>
-</div>
-<button id="shoot">🔫</button>
-<div id="message">¡¡Impacto!!</div>
-
-<a-scene id="scene"
-         embedded
-         vr-mode-ui="enabled:false"
-         webxr="requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #overlay"
-         renderer="colorManagement:true; physicallyCorrectLights:true"
-         style="display:none;">
-
-  <a-assets>
-    <img id="bossTex" src="vaia.png" crossorigin="anonymous" />
-  </a-assets>
-
-  <a-camera id="camera" position="0 0 0" look-controls="enabled:false" wasd-controls="enabled:false">
-    <!-- Weapon: simple box attached to camera -->
-    <a-box id="weapon" position="0 -0.15 -0.4" depth="0.05" height="0.08" width="0.3" color="#ffaa00"></a-box>
-  </a-camera>
-
-  <!-- Reticle indicates where the floor is detected -->
-  <a-entity id="reticle" visible="false">
-    <a-ring radius-inner="0.04" radius-outer="0.06" rotation="-90 0 0" material="color:#00e5ff; shader:flat; opacity:0.7"></a-ring>
-  </a-entity>
-
-  <!-- Anchor that contains the scene objects once placed -->
-  <a-entity id="anchor" visible="false">
-    <a-circle id="ground" radius="0.7" rotation="-90 0 0" material="color:#0b1f0b; opacity:0.8; transparent:true"></a-circle>
-
-    <!-- Boss as a PNG sprite -->
-    <a-entity id="boss" position="0 0  -0.4">
-      <a-plane id="bossPlane" width="0.5" height="0.5" material="src:#bossTex; transparent:true; side:double;" look-at="#camera"></a-plane>
-    </a-entity>
-  </a-entity>
-
-</a-scene>
-
-<script>
-  const startBtn = document.getElementById('start');
-  const overlay = document.getElementById('overlay');
-  const scene = document.getElementById('scene');
-  const shootBtn = document.getElementById('shoot');
-  const message = document.getElementById('message');
-  const bossHpEl = document.getElementById('bossHp');
-  const boss = document.getElementById('boss');
-  const anchor = document.getElementById('anchor');
-  const reticle = document.getElementById('reticle');
-  const camera = document.getElementById('camera');
-
-  let xrSession = null;
-  let hitTestSource = null;
-  let refSpace = null;
-  let lastHitMatrix = null;
-  let bossHp = 5;
-
-  startBtn.addEventListener('click', async () => {
-    if (!navigator.xr) {
-      showMessage('Este navegador no soporta WebXR. Usa Chrome en Android.', 4000);
-      return;
-    }
-
-    showMessage('Iniciando AR... espera permiso de cámara.', 60000);
-    startBtn.disabled = true;
-
-    try {
-      const supported = await navigator.xr.isSessionSupported('immersive-ar');
-      if (!supported) {
-        showMessage('WebXR AR no está disponible en este dispositivo.', 4000);
-        startBtn.disabled = false;
-        return;
-      }
-
-      await initXR();
-
-      // Solo ocultar el overlay si la sesión se inició correctamente
-      overlay.style.display = 'none';
-      scene.style.display = 'block';
-    } catch (err) {
-      console.error('Error al iniciar AR:', err);
-      showMessage('Error al iniciar AR: ' + (err.message || err), 6000);
-      startBtn.disabled = false;
-    }
-  });
-
-  async function initXR() {
-    const renderer = scene.renderer;
-    renderer.xr.enabled = true;
-
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay'],
-      domOverlay: { root: document.getElementById('overlay') }
-    });
-
-    xrSession = session;
-    renderer.xr.setSession(session);
-
-    refSpace = await session.requestReferenceSpace('local');
-    const viewerSpace = await session.requestReferenceSpace('viewer');
-    hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-    session.addEventListener('end', () => {
-      hitTestSource = null;
-      renderer.setAnimationLoop(null);
-    });
-
-    renderer.setAnimationLoop((time, frame) => {
-      if (!frame) return;
-      onXRFrame(frame);
-    });
-
-    shootBtn.style.display = 'block';
-    shootBtn.addEventListener('click', onShoot);
-
-    scene.addEventListener('click', onPlace);
-  }
-
-  function onXRFrame(frame) {
-    const results = frame.getHitTestResults(hitTestSource);
-    if (results.length > 0) {
-      const pose = results[0].getPose(refSpace);
-      if (pose) {
-        lastHitMatrix = pose.transform;
-        const pos = pose.transform.position;
-        reticle.setAttribute('visible', true);
-        reticle.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-      }
-    } else {
-      lastHitMatrix = null;
-      reticle.setAttribute('visible', false);
-    }
-  }
-
-  function onPlace() {
-    if (!lastHitMatrix) return;
-    const p = lastHitMatrix.position;
-    anchor.setAttribute('position', `${p.x} ${p.y} ${p.z}`);
-    anchor.setAttribute('visible', true);
-    reticle.setAttribute('visible', false);
-    overlay.style.display = 'block';
-    document.getElementById('start').style.display = 'none';
-    document.getElementById('msg')?.remove();
-  }
-
-  function onShoot() {
-    if (!anchor.getAttribute('visible')) return;
-    // Raycast from camera forward
-    const camObj = camera.object3D;
-    const dir = new THREE.Vector3();
-    camObj.getWorldDirection(dir);
-    const origin = new THREE.Vector3();
-    camObj.getWorldPosition(origin);
-
-    const raycaster = new THREE.Raycaster(origin, dir);
-    const bossObj = boss.object3D;
-    const intersects = raycaster.intersectObject(bossObj, true);
-
-    if (intersects.length > 0) {
-      bossHp = Math.max(0, bossHp - 1);
-      bossHpEl.textContent = bossHp;
-      showMessage('¡Acertaste!');
-      if (bossHp === 0) {
-        showMessage('Boss derrotado', 1500);
-        boss.setAttribute('visible', 'false');
-      }
-    } else {
-      showMessage('Fallaste', 800);
-    }
-  }
-
-  function showMessage(text, duration = 600) {
-    message.textContent = text;
-    message.style.display = 'block';
-    clearTimeout(message._timeout);
-    message._timeout = setTimeout(() => { message.style.display = 'none'; }, duration);
-  }
-</script>
-</body>
+  </body>
 </html>
