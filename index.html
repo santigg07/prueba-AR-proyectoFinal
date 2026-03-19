@@ -1,145 +1,150 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Mini AR Boss Fight</title>
+  <head>
+    <meta charset="utf-8">
+    <title>Mini AR Boss Fight</title>
 
-  <!-- A-Frame + AR.js -->
-  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <!-- A-Frame + AR.js -->
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-  <style>
-    body { margin: 0; overflow: hidden; }
+    <style>
+      body { margin: 0; overflow: hidden; }
 
-    /* UI estilo juego */
-    #ui {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      color: white;
-      font-family: Arial;
-      z-index: 10;
-    }
+      /* UI estilo juego */
+      #ui {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        color: white;
+        font-family: Arial;
+        z-index: 10;
+      }
 
-    #vidaBar {
-      width: 200px;
-      height: 20px;
-      background: red;
-      margin-top: 5px;
-      border: 2px solid white;
-    }
+      #vidaBar {
+        width: 200px;
+        height: 20px;
+        background: red;
+        margin-top: 5px;
+        border: 2px solid white;
+      }
 
-    #vida {
-      height: 100%;
-      width: 100%;
-      background: lime;
-    }
+      #vida {
+        height: 100%;
+        width: 100%;
+        background: lime;
+      }
 
-    #mensaje {
-      position: fixed;
-      top: 50%;
-      width: 100%;
-      text-align: center;
-      font-size: 30px;
-      color: yellow;
-      display: none;
-    }
-  </style>
-</head>
+      #mensaje {
+        position: fixed;
+        top: 50%;
+        width: 100%;
+        text-align: center;
+        font-size: 30px;
+        color: yellow;
+        display: none;
+      }
+    </style>
+  </head>
 
-<body>
+  <body>
 
-<!-- UI -->
-<div id="ui">
-  Boss HP
-  <div id="vidaBar">
-    <div id="vida"></div>
-  </div>
-</div>
+    <!-- UI -->
+    <div id="ui">
+      Boss HP
+      <div id="vidaBar">
+        <div id="vida"></div>
+      </div>
+    </div>
 
-<div id="mensaje">¡BOSS DERROTADO!</div>
+    <div id="mensaje">¡BOSS DERROTADO!</div>
 
-<a-scene embedded arjs>
+    <a-scene embedded arjs>
 
-  <a-marker preset="hiro">
+      <a-assets>
+        <img id="bossImg" src="vaia.png">
+      </a-assets>
 
-    <!-- ESCENARIO -->
-    <a-cylinder 
-      position="0 0 0"
-      radius="1"
-      height="0.2"
-      color="#654321">
-    </a-cylinder>
+      <a-marker preset="hiro">
 
-    <!-- BOSS -->
-    <a-box 
-      id="boss"
-      position="0 0.6 0"
-      color="red"
-      depth="0.6"
-      height="1.2"
-      width="0.6"
-      animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
-    </a-box>
+        <!-- SUELO -->
+        <a-cylinder 
+          position="0 0 0"
+          radius="1"
+          height="0.2"
+          color="#654321">
+        </a-cylinder>
 
-    <!-- EFECTO HIT -->
-    <a-sphere 
-      id="hitEffect"
-      position="0 1 0"
-      radius="0.2"
-      color="yellow"
-      visible="false">
-    </a-sphere>
+        <!-- BOSS PNG -->
+        <a-image 
+          id="boss"
+          src="#bossImg"
+          position="0 1 0"
+          width="1"
+          height="1"
+          look-at="[camera]"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 6000"
+          class="clickable">
+        </a-image>
 
-  </a-marker>
+        <!-- EFECTO -->
+        <a-sphere 
+          id="hitEffect"
+          position="0 1 0"
+          radius="0.2"
+          color="yellow"
+          visible="false">
+        </a-sphere>
 
-  <a-entity camera></a-entity>
+      </a-marker>
 
-</a-scene>
+      <a-entity camera cursor="rayOrigin: mouse"></a-entity>
 
-<script>
-let vida = 10;
-const maxVida = 10;
+    </a-scene>
 
-const boss = document.querySelector('#boss');
-const barra = document.querySelector('#vida');
-const efecto = document.querySelector('#hitEffect');
-const mensaje = document.querySelector('#mensaje');
+    <script>
+    let vida = 10;
+    const maxVida = 10;
 
-boss.addEventListener('click', () => {
+    const boss = document.querySelector('#boss');
+    const barra = document.querySelector('#vida');
+    const efecto = document.querySelector('#hitEffect');
+    const mensaje = document.querySelector('#mensaje');
 
-  if (vida <= 0) return;
+    boss.addEventListener('click', () => {
 
-  // Reducir vida
-  vida--;
+      if (vida <= 0) return;
 
-  // Actualizar UI
-  let porcentaje = (vida / maxVida) * 100;
-  barra.style.width = porcentaje + "%";
+      // Reducir vida
+      vida--;
 
-  // Efecto visual
-  efecto.setAttribute('visible', true);
+      // Actualizar UI
+      let porcentaje = (vida / maxVida) * 100;
+      barra.style.width = porcentaje + "%";
 
-  setTimeout(() => {
-    efecto.setAttribute('visible', false);
-  }, 100);
+      // Efecto visual
+      efecto.setAttribute('visible', true);
 
-  // Feedback: cambiar color momentáneamente
-  boss.setAttribute('color', 'white');
+      setTimeout(() => {
+        efecto.setAttribute('visible', false);
+      }, 100);
 
-  setTimeout(() => {
-    boss.setAttribute('color', 'red');
-  }, 100);
+      // Feedback: cambiar color momentáneamente
+      boss.setAttribute('color', 'white');
 
-  // Muerte
-  if (vida <= 0) {
-    boss.setAttribute('visible', false);
-    mensaje.style.display = "block";
-  }
+      setTimeout(() => {
+        boss.setAttribute('color', 'red');
+      }, 100);
 
-});
-</script>
+      // Muerte
+      if (vida <= 0) {
+        boss.setAttribute('visible', false);
+        mensaje.style.display = "block";
+      }
 
-</body>
+    });
+    </script>
+
+  </body>
 </html>
