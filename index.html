@@ -86,41 +86,13 @@
       side="double"
     ></a-cylinder>
 
-    
-
-    <!-- Líneas de energía del suelo (decorativas) -->
-    <a-box position="0 0.01 0" width="2.4" depth="0.04" height="0.01" color="#00ff88" opacity="0.4"></a-box>
-    <a-box position="0 0.01 0" width="0.04" depth="2.4" height="0.01" color="#00ff88" opacity="0.4"></a-box>
-
-    <!-- Piedras del escenario (flancos) -->
-    <a-sphere position="-1.0 0.15 0.2" radius="0.18" color="#3a3a4a" roughness="0.9"></a-sphere>
-    <a-sphere position="1.0 0.15 -0.1" radius="0.22" color="#2e2e3e" roughness="0.9"></a-sphere>
-    <a-sphere position="-0.9 0.12 -0.3" radius="0.14" color="#4a4a5a" roughness="0.9"></a-sphere>
-    <a-sphere position="0.8 0.10 0.4" radius="0.12" color="#3a3a4a" roughness="0.9"></a-sphere>
-
-    <!-- Cristales de energía izquierda -->
-    <a-cone position="-0.85 0.25 -0.1" height="0.5" radius-bottom="0.08" color="#00ff88" opacity="0.7"
-      animation="property: position; to: -0.85 0.30 -0.1; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-    </a-cone>
-    <!-- Cristales de energía derecha -->
-    <a-cone position="0.85 0.25 0.1" height="0.5" radius-bottom="0.08" color="#ff4400" opacity="0.7"
-      animation="property: position; to: 0.85 0.30 0.1; dir: alternate; loop: true; dur: 1700; easing: easeInOutSine">
-    </a-cone>
-
-    <!-- Partículas de fondo (esferas pequeñas flotantes) -->
-    <a-sphere position="-0.5 0.6 -0.3" radius="0.04" color="#00ff88" opacity="0.6"
-      animation="property: position; to: -0.5 0.9 -0.3; dir: alternate; loop: true; dur: 3000">
-    </a-sphere>
-    <a-sphere position="0.4 0.5 -0.5" radius="0.03" color="#ff8800" opacity="0.6"
-      animation="property: position; to: 0.4 0.8 -0.5; dir: alternate; loop: true; dur: 2500">
-    </a-sphere>
-
     <!-- ─── BOSS (Muwso) ─── -->
     <a-plane
       id="boss-sprite"  
       position="0 0.6 0"
       width="1.2"
       height="1.4"
+      rotation="-90 0 0"
       material="src: #boss-img; transparent: true; alphaTest: 0.1"
       look-at="[camera]"
     ></a-plane>
