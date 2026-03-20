@@ -4,16 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Tap-Tap Boss Fight AR</title>
-
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <!-- AR.js para A-Frame -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
   <link rel="stylesheet" href="style.css">
-  
-
-
 </head>
 <body>
 
@@ -28,10 +23,10 @@
         <div id="hp-bar"></div>
       </div>
     </div>
-    <div>
+    <!--<div>
       <div id="score-label">SCORE</div>
       <div id="score-display">0</div>
-    </div>
+    </div>-->
   </div>
 </div>
 
@@ -80,7 +75,7 @@
     <a-plane
       id="arena-floor"
       position="0 0 0"
-      width="6"
+      width="10"
       height="2.4"
       rotation="-90 0 0"
       material="src: #suelo-img; transparent: true; alphaTest: 0.05">
@@ -89,7 +84,7 @@
     <!-- ─── BOSS (vaia) ─── -->
     <a-plane
       id="boss-sprite"  
-      position="0 0.10 0"
+      position="0 0.20 0"
       width="1.2"
       height="1.4"
       rotation="-90 0 0"
