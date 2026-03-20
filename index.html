@@ -68,7 +68,7 @@
   style="position:fixed;top:0;left:0;width:100%;height:100%;"
 >
   <a-assets>
-    <!-- Generamos los assets del boss con canvas programáticamente -->
+    <img id="boss-img" src="vaia.png">
   </a-assets>
 
   <!-- Marker Hiro (el marcador estándar de AR.js, puedes imprimir el tuyo) -->
@@ -86,15 +86,7 @@
       side="double"
     ></a-cylinder>
 
-    <!-- Anillo exterior con efecto neón -->
-    <a-torus
-      position="0 0 0"
-      radius="1.2"
-      radius-tubular="0.04"
-      color="#00ff88"
-      opacity="0.7"
-      animation="property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear"
-    ></a-torus>
+    
 
     <!-- Líneas de energía del suelo (decorativas) -->
     <a-box position="0 0.01 0" width="2.4" depth="0.04" height="0.01" color="#00ff88" opacity="0.4"></a-box>
@@ -124,106 +116,14 @@
     </a-sphere>
 
     <!-- ─── BOSS (Muwso) ─── -->
-    <a-entity id="boss-root" position="0 0 0">
-
-      <!-- Sombra bajo el boss -->
-      <a-cylinder
-        position="0 0.01 0"
-        radius="0.38"
-        height="0.01"
-        color="#000"
-        opacity="0.35"
-        animation="property: scale; to: 0.9 1 0.9; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
-      ></a-cylinder>
-
-      <!-- Aura de energía del boss -->
-      <a-sphere
-        id="boss-aura"
-        position="0 0.55 0"
-        radius="0.55"
-        color="#ff3300"
-        opacity="0.12"
-        animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; loop: true; dur: 900; easing: easeInOutSine"
-      ></a-sphere>
-
-      <!-- Cuerpo principal del boss (blob gordo) -->
-      <a-sphere
-        id="boss-body"
-        position="0 0.45 0"
-        radius="0.38"
-        color="#e8e8e8"
-        roughness="0.6"
-        metalness="0.1"
-        animation="property: position; to: 0 0.50 0; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
-      ></a-sphere>
-
-      <!-- Barriga más prominente -->
-      <a-sphere
-        position="0 0.3 0.12"
-        radius="0.28"
-        color="#d8d8d8"
-        roughness="0.7"
-      ></a-sphere>
-
-      <!-- Cabeza -->
-      <a-sphere
-        id="boss-head"
-        position="0 0.78 0"
-        radius="0.29"
-        color="#f0f0f0"
-        roughness="0.5"
-        animation="property: position; to: 0 0.83 0; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
-      ></a-sphere>
-
-      <!-- Ojos (enojados) -->
-      <a-sphere position="-0.09 0.83 0.22" radius="0.055" color="#111"></a-sphere>
-      <a-sphere position="0.09 0.83 0.22" radius="0.055" color="#111"></a-sphere>
-      <!-- Brillo ojos -->
-      <a-sphere position="-0.075 0.845 0.27" radius="0.02" color="#fff"></a-sphere>
-      <a-sphere position="0.105 0.845 0.27" radius="0.02" color="#fff"></a-sphere>
-
-      <!-- Cejas enojadas -->
-      <a-box position="-0.09 0.87 0.25" width="0.12" height="0.025" depth="0.02" color="#555"
-        rotation="0 0 -15"></a-box>
-      <a-box position="0.09 0.87 0.25" width="0.12" height="0.025" depth="0.02" color="#555"
-        rotation="0 0 15"></a-box>
-
-      <!-- Boca fruncida -->
-      <a-torus position="0 0.77 0.26" radius="0.06" radius-tubular="0.012" color="#555"
-        rotation="0 0 0" arc="180" start-angle="180"></a-torus>
-
-      <!-- Brazos cortos -->
-      <a-sphere position="-0.42 0.52 0.05" radius="0.16" color="#e0e0e0"
-        animation="property: position; to: -0.42 0.57 0.05; dir: alternate; loop: true; dur: 750; easing: easeInOutSine">
-      </a-sphere>
-      <a-sphere position="0.42 0.52 0.05" radius="0.16" color="#e0e0e0"
-        animation="property: position; to: 0.42 0.57 0.05; dir: alternate; loop: true; dur: 850; easing: easeInOutSine">
-      </a-sphere>
-
-      <!-- Manos pequeñas -->
-      <a-sphere position="-0.54 0.44 0.08" radius="0.10" color="#d5d5d5"></a-sphere>
-      <a-sphere position="0.54 0.44 0.08" radius="0.10" color="#d5d5d5"></a-sphere>
-
-      <!-- Piernas cortas -->
-      <a-cylinder position="-0.16 0.12 0.05" radius="0.1" height="0.22" color="#d8d8d8"></a-cylinder>
-      <a-cylinder position="0.16 0.12 0.05" radius="0.1" height="0.22" color="#d8d8d8"></a-cylinder>
-
-      <!-- Pies -->
-      <a-sphere position="-0.16 0.03 0.1" radius="0.13" color="#c8c8c8"></a-sphere>
-      <a-sphere position="0.16 0.03 0.1" radius="0.13" color="#c8c8c8"></a-sphere>
-
-      <!-- Efecto de daño (anillo que aparece al golpear) -->
-      <a-torus
-        id="hit-ring"
-        position="0 0.5 0"
-        radius="0.5"
-        radius-tubular="0.03"
-        color="#ffdd00"
-        opacity="0"
-        id="hit-ring"
-      ></a-torus>
-
-    </a-entity><!-- /boss-root -->
+    <a-plane
+      id="boss-sprite"  
+      position="0 0.6 0"
+      width="1.2"
+      height="1.4"
+      material="src: #boss-img; transparent: true; alphaTest: 0.1"
+      look-at="[camera]"
+    ></a-plane>
 
     <!-- Texto "TAP TO HIT" flotante -->
     <a-text
