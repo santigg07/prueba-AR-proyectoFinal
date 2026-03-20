@@ -1,148 +1,664 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>AR Boss Fight WebXR</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Tap-Tap Boss Fight AR</title>
 
-  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <!-- AR.js para A-Frame -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    #ui {
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      background: #000;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── HUD ── */
+    #hud {
       position: fixed;
-      top: 20px;
-      left: 20px;
-      color: white;
-      font-family: Arial;
-      z-index: 10;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      pointer-events: none;
     }
 
-    #vidaBar {
-      width: 200px;
-      height: 20px;
-      background: red;
-      border: 2px solid white;
+    #top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, transparent 100%);
     }
 
-    #vida {
-      width: 100%;
+    #hp-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 180px;
+    }
+
+    #hp-label {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px #ff4444;
+    }
+
+    #hp-bar-bg {
+      width: 180px;
+      height: 14px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+
+    #hp-bar {
       height: 100%;
-      background: lime;
+      width: 100%;
+      background: linear-gradient(90deg, #ff2020, #ff6b00);
+      border-radius: 7px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px #ff4400;
     }
 
-    #startBtn {
+    #score-display {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 12px #00ff88, 0 2px 4px rgba(0,0,0,0.8);
+    }
+
+    #score-label {
+      font-size: 10px;
+      color: #00ff88;
+      letter-spacing: 3px;
+      text-align: right;
+      margin-bottom: 2px;
+    }
+
+    /* ── Tap ripple ── */
+    .tap-ripple {
       position: fixed;
-      bottom: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 3px solid #00ff88;
+      pointer-events: none;
+      z-index: 998;
+      transform: translate(-50%, -50%) scale(0);
+      animation: ripple 0.5s ease-out forwards;
+    }
+
+    @keyframes ripple {
+      0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+    }
+
+    /* ── Damage numbers ── */
+    .damage-number {
+      position: fixed;
+      color: #ffdd00;
+      font-size: 28px;
+      font-weight: 900;
+      pointer-events: none;
+      z-index: 997;
+      text-shadow: 0 0 10px #ff8800, 2px 2px 0 #000;
+      animation: floatUp 1s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-80px) scale(0.7); opacity: 0; }
+    }
+
+    /* ── States overlay ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(6px);
+      background: rgba(0,0,0,0.6);
+    }
+
+    #overlay.hidden { display: none; }
+
+    .overlay-title {
+      font-size: 42px;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-shadow: 0 0 30px #00ff88;
+      margin-bottom: 12px;
+    }
+
+    .overlay-sub {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .btn-play {
+      padding: 16px 48px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #00ff88, #00cc66);
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(0,255,136,0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .btn-play:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 15px rgba(0,255,136,0.3);
+    }
+
+    /* ── Scan prompt ── */
+    #scan-prompt {
+      position: fixed;
+      bottom: 40px;
       left: 50%;
       transform: translateX(-50%);
-      padding: 15px;
-      font-size: 18px;
-      z-index: 10;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(255,255,255,0.2); }
+      50%       { border-color: rgba(0,255,136,0.7); }
+    }
+
+    .scan-icon { font-size: 20px; animation: spin 3s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Victory / defeat banners ── */
+    #result-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    #result-overlay.visible { display: flex; }
+
+    .result-title {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .result-title.win  { color: #00ff88; text-shadow: 0 0 40px #00ff88; }
+    .result-title.lose { color: #ff2020; text-shadow: 0 0 40px #ff2020; }
+
+    .result-score {
+      font-size: 24px;
+      color: #fff;
+      margin: 16px 0 32px;
+      font-weight: 700;
+    }
+
+    /* ── Shake animation ── */
+    @keyframes bossHit {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      60%      { transform: translateX(8px); }
     }
   </style>
 </head>
-
 <body>
 
-<div id="ui">
-  Boss HP
-  <div id="vidaBar"><div id="vida"></div></div>
+<!-- ════════════════════════════════
+     HUD
+════════════════════════════════ -->
+<div id="hud">
+  <div id="top-bar">
+    <div id="hp-container">
+      <div id="hp-label">BOSS HP</div>
+      <div id="hp-bar-bg">
+        <div id="hp-bar"></div>
+      </div>
+    </div>
+    <div>
+      <div id="score-label">SCORE</div>
+      <div id="score-display">0</div>
+    </div>
+  </div>
 </div>
 
-<button id="startBtn">INICIAR AR</button>
+<!-- Scan prompt -->
+<div id="scan-prompt">
+  <span class="scan-icon">⟳</span>
+  Apunta el marcador Hiro para invocar al boss
+</div>
 
+<!-- Start overlay -->
+<div id="overlay">
+  <div class="overlay-title">TAP-TAP<br>BOSS</div>
+  <div class="overlay-sub">Escanea el marcador con la cámara<br>¡y derrota al enemigo a golpes!</div>
+  <button class="btn-play" onclick="startGame()">⚔️ EMPEZAR</button>
+</div>
+
+<!-- Result overlay -->
+<div id="result-overlay">
+  <div class="result-title" id="result-title">¡VICTORIA!</div>
+  <div class="result-score" id="result-score">Puntuación: 0</div>
+  <button class="btn-play" onclick="restartGame()">🔄 VOLVER A JUGAR</button>
+</div>
+
+
+<!-- ════════════════════════════════
+     A-FRAME + AR.JS SCENE
+════════════════════════════════ -->
 <a-scene
-  xr-mode-ui="enabled: true"
-  webxr="requiredFeatures: hit-test, local-floor"
-  renderer="colorManagement: true;"
-  vr-mode-ui="enabled: false">
+  embedded
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  renderer="antialias: true; alpha: true;"
+  vr-mode-ui="enabled: false"
+  id="ar-scene"
+  style="position:fixed;top:0;left:0;width:100%;height:100%;"
+>
+  <a-assets>
+    <!-- Generamos los assets del boss con canvas programáticamente -->
+  </a-assets>
 
-  <a-camera position="0 1.6 0"></a-camera>
+  <!-- Marker Hiro (el marcador estándar de AR.js, puedes imprimir el tuyo) -->
+  <a-marker preset="hiro" id="boss-marker" smooth="true" smoothCount="5">
 
-  <!-- Boss -->
-  <a-entity id="boss" visible="false">
-    <a-image 
-      src="vaia.png"
-      width="1"
-      height="1"
-      position="0 0.5 0">
-    </a-image>
-    <a-ring radius-inner="0.2" radius-outer="0.25" rotation="-90 0 0" color="yellow"></a-ring>
-  </a-entity>
+    <!-- ─── ESCENARIO BASE ─── -->
+    <!-- Suelo / arena de combate -->
+    <a-cylinder
+      id="arena-floor"
+      position="0 -0.01 0"
+      radius="1.2"
+      height="0.04"
+      color="#1a1a2e"
+      opacity="0.9"
+      side="double"
+    ></a-cylinder>
+
+    <!-- Anillo exterior con efecto neón -->
+    <a-torus
+      position="0 0 0"
+      radius="1.2"
+      radius-tubular="0.04"
+      color="#00ff88"
+      opacity="0.7"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear"
+    ></a-torus>
+
+    <!-- Líneas de energía del suelo (decorativas) -->
+    <a-box position="0 0.01 0" width="2.4" depth="0.04" height="0.01" color="#00ff88" opacity="0.4"></a-box>
+    <a-box position="0 0.01 0" width="0.04" depth="2.4" height="0.01" color="#00ff88" opacity="0.4"></a-box>
+
+    <!-- Piedras del escenario (flancos) -->
+    <a-sphere position="-1.0 0.15 0.2" radius="0.18" color="#3a3a4a" roughness="0.9"></a-sphere>
+    <a-sphere position="1.0 0.15 -0.1" radius="0.22" color="#2e2e3e" roughness="0.9"></a-sphere>
+    <a-sphere position="-0.9 0.12 -0.3" radius="0.14" color="#4a4a5a" roughness="0.9"></a-sphere>
+    <a-sphere position="0.8 0.10 0.4" radius="0.12" color="#3a3a4a" roughness="0.9"></a-sphere>
+
+    <!-- Cristales de energía izquierda -->
+    <a-cone position="-0.85 0.25 -0.1" height="0.5" radius-bottom="0.08" color="#00ff88" opacity="0.7"
+      animation="property: position; to: -0.85 0.30 -0.1; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+    </a-cone>
+    <!-- Cristales de energía derecha -->
+    <a-cone position="0.85 0.25 0.1" height="0.5" radius-bottom="0.08" color="#ff4400" opacity="0.7"
+      animation="property: position; to: 0.85 0.30 0.1; dir: alternate; loop: true; dur: 1700; easing: easeInOutSine">
+    </a-cone>
+
+    <!-- Partículas de fondo (esferas pequeñas flotantes) -->
+    <a-sphere position="-0.5 0.6 -0.3" radius="0.04" color="#00ff88" opacity="0.6"
+      animation="property: position; to: -0.5 0.9 -0.3; dir: alternate; loop: true; dur: 3000">
+    </a-sphere>
+    <a-sphere position="0.4 0.5 -0.5" radius="0.03" color="#ff8800" opacity="0.6"
+      animation="property: position; to: 0.4 0.8 -0.5; dir: alternate; loop: true; dur: 2500">
+    </a-sphere>
+
+    <!-- ─── BOSS (Muwso) ─── -->
+    <a-entity id="boss-root" position="0 0 0">
+
+      <!-- Sombra bajo el boss -->
+      <a-cylinder
+        position="0 0.01 0"
+        radius="0.38"
+        height="0.01"
+        color="#000"
+        opacity="0.35"
+        animation="property: scale; to: 0.9 1 0.9; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
+      ></a-cylinder>
+
+      <!-- Aura de energía del boss -->
+      <a-sphere
+        id="boss-aura"
+        position="0 0.55 0"
+        radius="0.55"
+        color="#ff3300"
+        opacity="0.12"
+        animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; loop: true; dur: 900; easing: easeInOutSine"
+      ></a-sphere>
+
+      <!-- Cuerpo principal del boss (blob gordo) -->
+      <a-sphere
+        id="boss-body"
+        position="0 0.45 0"
+        radius="0.38"
+        color="#e8e8e8"
+        roughness="0.6"
+        metalness="0.1"
+        animation="property: position; to: 0 0.50 0; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
+      ></a-sphere>
+
+      <!-- Barriga más prominente -->
+      <a-sphere
+        position="0 0.3 0.12"
+        radius="0.28"
+        color="#d8d8d8"
+        roughness="0.7"
+      ></a-sphere>
+
+      <!-- Cabeza -->
+      <a-sphere
+        id="boss-head"
+        position="0 0.78 0"
+        radius="0.29"
+        color="#f0f0f0"
+        roughness="0.5"
+        animation="property: position; to: 0 0.83 0; dir: alternate; loop: true; dur: 800; easing: easeInOutSine"
+      ></a-sphere>
+
+      <!-- Ojos (enojados) -->
+      <a-sphere position="-0.09 0.83 0.22" radius="0.055" color="#111"></a-sphere>
+      <a-sphere position="0.09 0.83 0.22" radius="0.055" color="#111"></a-sphere>
+      <!-- Brillo ojos -->
+      <a-sphere position="-0.075 0.845 0.27" radius="0.02" color="#fff"></a-sphere>
+      <a-sphere position="0.105 0.845 0.27" radius="0.02" color="#fff"></a-sphere>
+
+      <!-- Cejas enojadas -->
+      <a-box position="-0.09 0.87 0.25" width="0.12" height="0.025" depth="0.02" color="#555"
+        rotation="0 0 -15"></a-box>
+      <a-box position="0.09 0.87 0.25" width="0.12" height="0.025" depth="0.02" color="#555"
+        rotation="0 0 15"></a-box>
+
+      <!-- Boca fruncida -->
+      <a-torus position="0 0.77 0.26" radius="0.06" radius-tubular="0.012" color="#555"
+        rotation="0 0 0" arc="180" start-angle="180"></a-torus>
+
+      <!-- Brazos cortos -->
+      <a-sphere position="-0.42 0.52 0.05" radius="0.16" color="#e0e0e0"
+        animation="property: position; to: -0.42 0.57 0.05; dir: alternate; loop: true; dur: 750; easing: easeInOutSine">
+      </a-sphere>
+      <a-sphere position="0.42 0.52 0.05" radius="0.16" color="#e0e0e0"
+        animation="property: position; to: 0.42 0.57 0.05; dir: alternate; loop: true; dur: 850; easing: easeInOutSine">
+      </a-sphere>
+
+      <!-- Manos pequeñas -->
+      <a-sphere position="-0.54 0.44 0.08" radius="0.10" color="#d5d5d5"></a-sphere>
+      <a-sphere position="0.54 0.44 0.08" radius="0.10" color="#d5d5d5"></a-sphere>
+
+      <!-- Piernas cortas -->
+      <a-cylinder position="-0.16 0.12 0.05" radius="0.1" height="0.22" color="#d8d8d8"></a-cylinder>
+      <a-cylinder position="0.16 0.12 0.05" radius="0.1" height="0.22" color="#d8d8d8"></a-cylinder>
+
+      <!-- Pies -->
+      <a-sphere position="-0.16 0.03 0.1" radius="0.13" color="#c8c8c8"></a-sphere>
+      <a-sphere position="0.16 0.03 0.1" radius="0.13" color="#c8c8c8"></a-sphere>
+
+      <!-- Efecto de daño (anillo que aparece al golpear) -->
+      <a-torus
+        id="hit-ring"
+        position="0 0.5 0"
+        radius="0.5"
+        radius-tubular="0.03"
+        color="#ffdd00"
+        opacity="0"
+        id="hit-ring"
+      ></a-torus>
+
+    </a-entity><!-- /boss-root -->
+
+    <!-- Texto "TAP TO HIT" flotante -->
+    <a-text
+      id="tap-hint"
+      value="¡TOCA LA PANTALLA!"
+      align="center"
+      color="#ffdd00"
+      position="0 1.3 0"
+      scale="0.5 0.5 0.5"
+      animation="property: position; to: 0 1.4 0; dir: alternate; loop: true; dur: 1000"
+    ></a-text>
+
+    <!-- Barra de vida 3D sobre el boss -->
+    <a-entity position="0 1.15 0">
+      <a-box width="0.8" height="0.07" depth="0.01" color="#333" position="0 0 0"></a-box>
+      <a-box id="hp-bar-3d" width="0.8" height="0.07" depth="0.015" color="#ff3300" position="0 0 0.005"></a-box>
+    </a-entity>
+
+  </a-marker><!-- /boss-marker -->
+
+  <!-- Cámara -->
+  <a-entity camera></a-entity>
 
 </a-scene>
 
+
+<!-- ════════════════════════════════
+     GAME LOGIC
+════════════════════════════════ -->
 <script>
-let boss = document.querySelector("#boss");
-let vida = 10;
-let maxVida = 10;
-let barra = document.querySelector("#vida");
+  // ── Config ──
+  const BOSS_MAX_HP  = 20;
+  const DAMAGE_PER_TAP = 1;
+  const SCORE_PER_HIT  = 50;
 
-let placed = false;
-let xrSession = null;
-let hitTestSource = null;
-let referenceSpace = null;
+  // ── State ──
+  let bossHP    = BOSS_MAX_HP;
+  let score     = 0;
+  let gameActive = false;
+  let markerVisible = false;
 
-// BOTÓN AR
-document.querySelector("#startBtn").addEventListener("click", async () => {
-  const scene = document.querySelector("a-scene");
+  // ── DOM refs ──
+  const hpBar       = document.getElementById('hp-bar');
+  const hpBar3D     = document.getElementById('hp-bar-3d');
+  const scoreDisplay= document.getElementById('score-display');
+  const overlay     = document.getElementById('overlay');
+  const scanPrompt  = document.getElementById('scan-prompt');
+  const resultOverlay = document.getElementById('result-overlay');
+  const resultTitle = document.getElementById('result-title');
+  const resultScore = document.getElementById('result-score');
+  const tapHint     = document.getElementById('tap-hint');
 
-  await scene.enterAR();
+  // ── Start / Restart ──
+  function startGame() {
+    overlay.classList.add('hidden');
+    gameActive = true;
+    bossHP  = BOSS_MAX_HP;
+    score   = 0;
+    updateHpUI();
+    updateScoreUI();
+    resultOverlay.classList.remove('visible');
+  }
 
-  xrSession = scene.renderer.xr.getSession();
+  function restartGame() {
+    startGame();
+  }
 
-  referenceSpace = await xrSession.requestReferenceSpace("viewer");
-  const viewerSpace = await xrSession.requestReferenceSpace("viewer");
-
-  hitTestSource = await xrSession.requestHitTestSource({
-    space: viewerSpace
+  // ── Marker events ──
+  const marker = document.getElementById('boss-marker');
+  marker.addEventListener('markerFound', () => {
+    markerVisible = true;
+    scanPrompt.style.display = 'none';
+    if (tapHint) tapHint.setAttribute('visible', true);
+  });
+  marker.addEventListener('markerLost', () => {
+    markerVisible = false;
+    scanPrompt.style.display = 'flex';
   });
 
-});
+  // ── Touch / click ──
+  document.addEventListener('touchstart', handleTap, { passive: false });
+  document.addEventListener('mousedown',  handleTap);
 
-// LOOP DE HIT TEST
-AFRAME.scenes[0].renderer.setAnimationLoop((timestamp, frame) => {
-  if (!frame || !hitTestSource) return;
+  function handleTap(e) {
+    // Ignorar clicks en botones
+    if (e.target.tagName === 'BUTTON') return;
+    if (!gameActive) return;
+    if (!markerVisible) return;
 
-  const hitTestResults = frame.getHitTestResults(hitTestSource);
+    e.preventDefault();
 
-  if (hitTestResults.length > 0 && !placed) {
-    const hit = hitTestResults[0];
-    const pose = hit.getPose(AFRAME.scenes[0].renderer.xr.getReferenceSpace());
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const y = e.touches ? e.touches[0].clientY : e.clientY;
 
-    if (pose) {
-      const pos = pose.transform.position;
+    dealDamage(x, y);
+  }
 
-      boss.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
+  function dealDamage(x, y) {
+    if (bossHP <= 0) return;
+
+    bossHP  -= DAMAGE_PER_TAP;
+    score   += SCORE_PER_HIT;
+
+    updateHpUI();
+    updateScoreUI();
+    spawnRipple(x, y);
+    spawnDamageNumber(x, y);
+    flashBoss();
+
+    if (bossHP <= 0) {
+      bossHP = 0;
+      updateHpUI();
+      setTimeout(showVictory, 600);
     }
   }
-});
 
-// TAP PARA FIJAR
-window.addEventListener("click", () => {
-  if (!placed && boss.getAttribute("position")) {
-    boss.setAttribute("visible", true);
-    placed = true;
-  }
-});
+  function updateHpUI() {
+    const pct = Math.max(0, bossHP / BOSS_MAX_HP);
+    hpBar.style.width = (pct * 100) + '%';
 
-// ATAQUE
-boss.addEventListener("click", () => {
+    // Color de la barra según HP
+    if (pct > 0.6)      hpBar.style.background = 'linear-gradient(90deg, #ff2020, #ff6b00)';
+    else if (pct > 0.3) hpBar.style.background = 'linear-gradient(90deg, #ff6b00, #ffcc00)';
+    else                hpBar.style.background = 'linear-gradient(90deg, #ffcc00, #ffff00)';
 
-  if (vida <= 0) return;
-
-  vida--;
-
-  let porcentaje = (vida / maxVida) * 100;
-  barra.style.width = porcentaje + "%";
-
-  if (vida <= 0) {
-    boss.setAttribute("visible", false);
-    alert("¡BOSS DERROTADO!");
+    // Barra 3D en la escena AR
+    if (hpBar3D) {
+      hpBar3D.setAttribute('width', (0.8 * pct).toFixed(3));
+      const offsetX = -0.4 * (1 - pct);
+      hpBar3D.setAttribute('position', `${offsetX.toFixed(3)} 0 0.005`);
+    }
   }
 
-});
+  function updateScoreUI() {
+    scoreDisplay.textContent = score.toLocaleString();
+  }
+
+  // ── VFX ──
+  function spawnRipple(x, y) {
+    const r = document.createElement('div');
+    r.className = 'tap-ripple';
+    r.style.left = x + 'px';
+    r.style.top  = y + 'px';
+    document.body.appendChild(r);
+    setTimeout(() => r.remove(), 500);
+  }
+
+  function spawnDamageNumber(x, y) {
+    const dmg = document.createElement('div');
+    dmg.className = 'damage-number';
+    dmg.textContent = '-' + (DAMAGE_PER_TAP * 100);
+    dmg.style.left = (x - 20 + Math.random() * 40) + 'px';
+    dmg.style.top  = (y - 20) + 'px';
+    document.body.appendChild(dmg);
+    setTimeout(() => dmg.remove(), 1000);
+  }
+
+  function flashBoss() {
+    const body = document.getElementById('boss-body');
+    const head = document.getElementById('boss-head');
+    const aura = document.getElementById('boss-aura');
+
+    // Flash rojo
+    [body, head].forEach(el => {
+      if (!el) return;
+      const orig = el.getAttribute('color');
+      el.setAttribute('color', '#ff4400');
+      setTimeout(() => el.setAttribute('color', orig), 150);
+    });
+
+    // Shake via position animation temporal
+    const root = document.getElementById('boss-root');
+    if (root) {
+      root.setAttribute('animation__shake', 
+        'property: position; from: -0.08 0 0; to: 0.08 0 0; dir: alternate; loop: 3; dur: 80; easing: linear');
+      setTimeout(() => {
+        root.removeAttribute('animation__shake');
+        root.setAttribute('position', '0 0 0');
+      }, 300);
+    }
+
+    // Hit ring flash
+    const ring = document.getElementById('hit-ring');
+    if (ring) {
+      ring.setAttribute('opacity', '0.8');
+      ring.setAttribute('animation__ring', 'property: opacity; to: 0; dur: 300');
+      setTimeout(() => ring.removeAttribute('animation__ring'), 350);
+    }
+  }
+
+  function showVictory() {
+    gameActive = false;
+    resultTitle.textContent  = '¡VICTORIA!';
+    resultTitle.className    = 'result-title win';
+    resultScore.textContent  = `Puntuación: ${score.toLocaleString()}`;
+    resultOverlay.classList.add('visible');
+
+    // Explosión de partículas
+    for (let i = 0; i < 12; i++) {
+      setTimeout(() => {
+        const rx = Math.random() * window.innerWidth;
+        const ry = Math.random() * window.innerHeight;
+        spawnRipple(rx, ry);
+      }, i * 80);
+    }
+  }
 </script>
 
 </body>
