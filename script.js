@@ -186,7 +186,7 @@ const jugadores = [
 jugadores.sort((a, b) => b.puntos - a.puntos);
 
 function generarTabla() {
-  const cuerpo = document.getElementById("cuerpoTala");
+  const cuerpo = document.getElementById("cuerpotabla");
   cuerpo.innerHTML = "";
 
   jugadores.forEach((jugador, index) => {
