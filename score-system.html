@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Score System — Tap-Tap Boss</title>
+<style>
+  /* ── Reset ── */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a12;
+    font-family: 'Segoe UI', sans-serif;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ════════════════════════
+     RESULT OVERLAY
+  ════════════════════════ */
+  #result-overlay {
+    position: relative;
+    width: min(420px, 96vw);
+    background: linear-gradient(160deg, #0f0f20 0%, #1a1020 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    overflow: hidden;
+    padding: 32px 28px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* fondo decorativo */
+  #result-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,255,136,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 80% 100%, rgba(255,68,0,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Título resultado ── */
+  .result-title {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1;
+  }
+  .result-title.win  {
+    color: #00ff88;
+    text-shadow: 0 0 30px rgba(0,255,136,0.6), 0 0 60px rgba(0,255,136,0.2);
+  }
+  .result-title.lose {
+    color: #ff3333;
+    text-shadow: 0 0 30px rgba(255,51,51,0.6);
+  }
+
+  /* ── Score principal ── */
+  .score-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .score-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+  }
+  .score-value {
+    font-size: 52px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255,220,80,0.4);
+    transition: all 0.4s;
+  }
+  .score-value.new-best {
+    color: #ffdd00;
+    text-shadow: 0 0 30px rgba(255,220,0,0.7);
+  }
+  .new-best-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #ffdd00;
+    background: rgba(255,220,0,0.12);
+    border: 1px solid rgba(255,220,0,0.3);
+    border-radius: 20px;
+    padding: 3px 12px;
+    display: none;
+  }
+  .new-best-badge.visible { display: block; }
+
+  /* ── Recompensas ── */
+  .rewards-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rewards-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 2px;
+  }
+
+  .rewards-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .reward-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.04);
+    min-width: 72px;
+    opacity: 0.3;
+    transform: scale(0.92);
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .reward-badge.unlocked {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .reward-badge.unlocked::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--glow);
+    opacity: 0.12;
+  }
+
+  .reward-badge .icon { font-size: 24px; line-height: 1; }
+  .reward-badge .name {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+  }
+  .reward-badge .pts {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .reward-badge.unlocked .name { color: #fff; }
+
+  /* colores por rareza */
+  .reward-badge.bronze  { --glow: #cd7f32; border-color: rgba(205,127,50,0.25); }
+  .reward-badge.silver  { --glow: #c0c0c0; border-color: rgba(192,192,192,0.25); }
+  .reward-badge.gold    { --glow: #ffd700; border-color: rgba(255,215,0,0.35); }
+  .reward-badge.diamond { --glow: #00eeff; border-color: rgba(0,238,255,0.35); }
+
+  .reward-badge.unlocked.bronze .name  { color: #cd7f32; }
+  .reward-badge.unlocked.silver .name  { color: #c0c0c0; }
+  .reward-badge.unlocked.gold   .name  { color: #ffd700; }
+  .reward-badge.unlocked.diamond .name { color: #00eeff; }
+
+  /* ── Divisor ── */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+
+  /* ── Tabla de puntuación ── */
+  .leaderboard-section { width: 100%; }
+
+  .lb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .lb-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+  }
+
+  .lb-clear {
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    cursor: pointer;
+    background: none;
+    border: none;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.2s;
+  }
+  .lb-clear:hover { color: rgba(255,80,80,0.7); }
+
+  .lb-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .lb-table thead tr {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .lb-table th {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 0 8px 8px;
+    text-align: left;
+  }
+  .lb-table th:last-child { text-align: right; }
+
+  .lb-table td {
+    padding: 9px 8px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .lb-table td:last-child { text-align: right; font-weight: 700; }
+
+  /* fila top 1 */
+  .lb-table tr.rank-1 td {
+    color: #fff;
+    background: rgba(255,215,0,0.05);
+  }
+  .lb-table tr.rank-1 td:last-child { color: #ffd700; }
+
+  /* fila top 2 */
+  .lb-table tr.rank-2 td { color: rgba(255,255,255,0.9); }
+  .lb-table tr.rank-2 td:last-child { color: #c0c0c0; }
+
+  /* fila resaltada (partida actual) */
+  .lb-table tr.current-run td {
+    color: #00ff88;
+    background: rgba(0,255,136,0.05);
+  }
+
+  .rank-medal { font-size: 14px; margin-right: 4px; }
+
+  .lb-empty {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255,255,255,0.2);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* ── Botones ── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn-play {
+    flex: 1;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+  }
+  .btn-play:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    color: #000;
+    box-shadow: 0 0 24px rgba(0,255,136,0.35);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* ── Animación entrada ── */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .anim { animation: slideUp 0.5s ease both; }
+  .anim-d1 { animation-delay: 0.1s; }
+  .anim-d2 { animation-delay: 0.2s; }
+  .anim-d3 { animation-delay: 0.35s; }
+  .anim-d4 { animation-delay: 0.5s; }
+  .anim-d5 { animation-delay: 0.65s; }
+
+  /* ── Animación badge unlock ── */
+  @keyframes badgePop {
+    0%   { transform: scale(0.7); opacity: 0; }
+    70%  { transform: scale(1.12); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .reward-badge.pop { animation: badgePop 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════
+     RESULT OVERLAY
+════════════════════════════════ -->
+<div id="result-overlay">
+
+  <!-- Título -->
+  <div class="result-title win anim" id="result-title">¡VICTORIA!</div>
+
+  <!-- Score principal -->
+  <div class="score-block anim anim-d1">
+    <div class="score-label">Puntuación</div>
+    <div class="score-value" id="result-score">0</div>
+    <div class="new-best-badge" id="new-best-badge">✦ NUEVO RÉCORD ✦</div>
+  </div>
+
+  <!-- Recompensas -->
+  <div class="rewards-section anim anim-d2">
+    <div class="rewards-title">Recompensas obtenidas</div>
+    <div class="rewards-grid" id="rewards-grid">
+      <!-- generadas por JS -->
+    </div>
+  </div>
+
+  <div class="divider anim anim-d3"></div>
+
+  <!-- Tabla de puntuación -->
+  <div class="leaderboard-section anim anim-d4">
+    <div class="lb-header">
+      <div class="lb-title">🏆 Ranking</div>
+      <button class="lb-clear" onclick="clearLeaderboard()">Borrar</button>
+    </div>
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jugador</th>
+          <th>Puntos</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpotabla"></tbody>
+    </table>
+  </div>
+
+  <!-- Botones -->
+  <div class="btn-row anim anim-d5">
+    <button class="btn-play btn-secondary" onclick="shareScore()">📤 Compartir</button>
+    <button class="btn-play btn-primary" onclick="restartGame()">⚔️ Rejugar</button>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════
+     LÓGICA
+════════════════════════════════ -->
+<script>
+// ══════════════════════════════════
+//  CONFIGURACIÓN DE RECOMPENSAS
+// ══════════════════════════════════
+const REWARDS = [
+  {
+    id: 'first_blood',
+    icon: '⚔️',
+    name: 'Primer golpe',
+    desc: 'Completa tu primera partida',
+    rarity: 'bronze',
+    condition: (score, time) => true   // siempre al ganar
+  },
+  {
+    id: 'speedrun',
+    icon: '⚡',
+    name: 'Speedrun',
+    desc: 'Derrota al boss en menos de 15s',
+    rarity: 'silver',
+    condition: (score, time) => time <= 15
+  },
+  {
+    id: 'combo_master',
+    icon: '🔥',
+    name: 'Combo',
+    desc: 'Consigue más de 1500 puntos',
+    rarity: 'gold',
+    condition: (score, time) => score >= 1500
+  },
+  {
+    id: 'perfectionist',
+    icon: '💎',
+    name: 'Perfecto',
+    desc: 'Más de 2000 puntos en menos de 20s',
+    rarity: 'diamond',
+    condition: (score, time) => score >= 2000 && time <= 20
+  }
+];
+
+// ══════════════════════════════════
+//  LEADERBOARD (localStorage)
+// ══════════════════════════════════
+const LB_KEY = 'taptap_leaderboard';
+const MAX_ENTRIES = 8;
+
+function getLeaderboard() {
+  try {
+    return JSON.parse(localStorage.getItem(LB_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveLeaderboard(lb) {
+  localStorage.setItem(LB_KEY, JSON.stringify(lb));
+}
+
+function addScore(nombre, puntos) {
+  const lb = getLeaderboard();
+  lb.push({ nombre, puntos, fecha: new Date().toLocaleDateString('es-ES') });
+  lb.sort((a, b) => b.puntos - a.puntos);
+  const trimmed = lb.slice(0, MAX_ENTRIES);
+  saveLeaderboard(trimmed);
+  return trimmed;
+}
+
+function clearLeaderboard() {
+  if (confirm('¿Borrar todo el ranking?')) {
+    localStorage.removeItem(LB_KEY);
+    renderLeaderboard([], -1);
+  }
+}
+
+// ══════════════════════════════════
+//  RENDER TABLA
+// ══════════════════════════════════
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function renderLeaderboard(lb, currentIndex) {
+  const tbody = document.getElementById('cuerpotabla');
+
+  if (lb.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="lb-empty">Sé el primero en el ranking</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lb.map((entry, i) => {
+    const medal = MEDALS[i] || '';
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : '';
+    const currentClass = i === currentIndex ? 'current-run' : '';
+    const pts = entry.puntos.toLocaleString('es-ES');
+    return `
+      <tr class="${rankClass} ${currentClass}">
+        <td><span class="rank-medal">${medal}</span>${i + 1}</td>
+        <td>${entry.nombre}</td>
+        <td>${pts}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+//  RENDER RECOMPENSAS
+// ══════════════════════════════════
+function renderRewards(score, time) {
+  const grid = document.getElementById('rewards-grid');
+
+  grid.innerHTML = REWARDS.map(r => `
+    <div class="reward-badge ${r.rarity}" id="badge-${r.id}">
+      <span class="icon">${r.icon}</span>
+      <span class="name">${r.name}</span>
+      <span class="pts">${r.desc}</span>
+    </div>
+  `).join('');
+
+  // Desbloquear con delay escalonado
+  REWARDS.forEach((r, i) => {
+    if (r.condition(score, time)) {
+      setTimeout(() => {
+        const el = document.getElementById(`badge-${r.id}`);
+        el.classList.add('unlocked', 'pop');
+      }, 700 + i * 200);
+    }
+  });
+}
+
+// ══════════════════════════════════
+//  MOSTRAR RESULTADO
+// ══════════════════════════════════
+function showResult(nombre, score, timeSeconds, won) {
+  // Título
+  const titleEl = document.getElementById('result-title');
+  titleEl.textContent = won ? '¡VICTORIA!' : '¡DERROTA!';
+  titleEl.className = `result-title ${won ? 'win' : 'lose'} anim`;
+
+  // Score
+  document.getElementById('result-score').textContent = score.toLocaleString('es-ES');
+
+  // Recompensas
+  renderRewards(score, timeSeconds);
+
+  // Leaderboard
+  const prevBest = getLeaderboard()[0]?.puntos || 0;
+  const lb = won ? addScore(nombre, score) : getLeaderboard();
+  const currentIndex = lb.findIndex(e => e.nombre === nombre && e.puntos === score);
+  renderLeaderboard(lb, currentIndex);
+
+  // Nuevo récord
+  if (won && score > prevBest) {
+    document.getElementById('result-score').classList.add('new-best');
+    document.getElementById('new-best-badge').classList.add('visible');
+  }
+}
+
+// ══════════════════════════════════
+//  COMPARTIR
+// ══════════════════════════════════
+function shareScore() {
+  const score = document.getElementById('result-score').textContent;
+  const text = `¡He conseguido ${score} puntos en Tap-Tap Boss! ⚔️ ¿Puedes superarme?`;
+  if (navigator.share) {
+    navigator.share({ title: 'Tap-Tap Boss', text });
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('¡Texto copiado al portapapeles!'));
+  }
+}
+
+function restartGame() {
+  alert('Reiniciando partida...');
+  // En tu proyecto: llamar a tu función startGame()
+}
+
+// ══════════════════════════════════
+//  DEMO — simula una partida
+// ══════════════════════════════════
+// Añade datos de prueba al localStorage para ver el ranking
+const demoData = [
+  { nombre: 'Beatriz', puntos: 1800, fecha: '20/3/2026' },
+  { nombre: 'Carlos',  puntos: 1350, fecha: '21/3/2026' },
+  { nombre: 'Ana',     puntos: 950,  fecha: '22/3/2026' },
+];
+if (!localStorage.getItem(LB_KEY)) {
+  saveLeaderboard(demoData);
+}
+
+// Simula resultado: jugador "Tú", 2100 pts, 18 segundos, victoria
+showResult('Tú', 2100, 18, true);
+</script>
+
+</body>
+</html>
