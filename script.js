@@ -176,3 +176,29 @@ function showVictory() {
       }, i * 80);
     }
 }
+
+const jugadores = [
+  {nombre: "beatriz", puntos: 150},
+  {nombre: "ana", puntos: 200},
+  {nombre: "carlos", puntos: 180}
+];
+
+jugadores.sort((a, b) => b.puntos - a.puntos);
+
+function generarTabla() {
+  const cuerpo = document.getElementById("cuerpoTala");
+  cuerpo.innerHTML = "";
+
+  jugadores.forEach((jugador, index) => {
+    const fila = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${jugador.nombre}</td>
+                <td>${jugador.puntos}</td>
+            </tr>
+          `;
+          cuerpo.innerHTML += fila;
+  });
+}
+
+generarTabla();
