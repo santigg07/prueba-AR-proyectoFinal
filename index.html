@@ -45,21 +45,49 @@
 
 <!-- Result overlay -->
 <div id="result-overlay">
-  <div class="result-title" id="result-title">¡VICTORIA!</div>
-  <div class="result-score" id="result-score">Puntuación: 0</div>
-  <table id="tablaPuntos">
-    <thead>
-      <tr>
-        <th>Posición</th>
-        <th>Jugadores</th>
-        <th>Puntos</th>
-      </tr>
-    </thead>
-    <tbody id="cuerpotabla">
-      <!-- aquí se insetarán los datos de los jugadores -->
-    </tbody>
-  </table>
-  <button class="btn-play" onclick="restartGame()">🔄 VOLVER A JUGAR</button>
+  <!-- Título -->
+  <div class="result-title win anim" id="result-title">¡VICTORIA!</div>
+
+  <!-- Score principal -->
+  <div class="score-block anim anim-d1">
+    <div class="score-label">Puntuación</div>
+    <div class="score-value" id="result-score">0</div>
+    <div class="new-best-badge" id="new-best-badge">✦ NUEVO RÉCORD ✦</div>
+  </div>
+
+  <!-- Recompensas -->
+  <div class="rewards-section anim anim-d2">
+    <div class="rewards-title">Recompensas obtenidas</div>
+    <div class="rewards-grid" id="rewards-grid">
+      <!-- lo generamos por javascript -->
+    </div>
+  </div>
+
+  <div class="divider anim anim-d3"></div>
+
+  <!-- Tabla de puntuación -->
+  <div class="leaderboard-section anim anim-d4">
+    <div class="lb-header">
+      <div class="lb-title">🏆 Ranking</div>
+      <button class="lb-clear" onclick="clearLeaderboard()">Borrar</button>
+    </div>
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jugador</th>
+          <th>Puntos</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpotabla"></tbody>
+    </table>
+  </div>
+
+  <!-- Botones -->
+  <div class="btn-row anim anim-d5">
+    <button class="btn-play btn-secondary" onclick="shareScore()">📤 Compartir</button>
+    <button class="btn-play btn-primary" onclick="restartGame()">⚔️ Rejugar</button>
+  </div>
 </div>
 
 

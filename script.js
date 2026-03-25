@@ -177,28 +177,187 @@ function showVictory() {
     }
 }
 
-const jugadores = [
-  {nombre: "beatriz", puntos: 150},
-  {nombre: "ana", puntos: 200},
-  {nombre: "carlos", puntos: 180}
+// ══════════════════════════════════
+//  CONFIGURACIÓN DE RECOMPENSAS
+// ══════════════════════════════════
+const REWARDS = [
+  {
+    id: 'first_blood',
+    icon: '⚔️',
+    name: 'Primer golpe',
+    desc: 'Completa tu primera partida',
+    rarity: 'bronze',
+    condition: (score, time) => true   // siempre al ganar
+  },
+  {
+    id: 'speedrun',
+    icon: '⚡',
+    name: 'Speedrun',
+    desc: 'Derrota al boss en menos de 15s',
+    rarity: 'silver',
+    condition: (score, time) => time <= 15
+  },
+  {
+    id: 'combo_master',
+    icon: '🔥',
+    name: 'Combo',
+    desc: 'Consigue más de 1500 puntos',
+    rarity: 'gold',
+    condition: (score, time) => score >= 1500
+  },
+  {
+    id: 'perfectionist',
+    icon: '💎',
+    name: 'Perfecto',
+    desc: 'Más de 2000 puntos en menos de 20s',
+    rarity: 'diamond',
+    condition: (score, time) => score >= 2000 && time <= 20
+  }
 ];
 
-jugadores.sort((a, b) => b.puntos - a.puntos);
+// ══════════════════════════════════
+//  LEADERBOARD (localStorage)
+// ══════════════════════════════════
+const LB_KEY = 'taptap_leaderboard';
+const MAX_ENTRIES = 8;
 
-function generarTabla() {
-  const cuerpo = document.getElementById("cuerpotabla");
-  cuerpo.innerHTML = "";
+function getLeaderboard() {
+  try {
+    return JSON.parse(localStorage.getItem(LB_KEY)) || [];
+  } catch { return []; }
+}
 
-  jugadores.forEach((jugador, index) => {
-    const fila = `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${jugador.nombre}</td>
-                <td>${jugador.puntos}</td>
-            </tr>
-          `;
-          cuerpo.innerHTML += fila;
+function saveLeaderboard(lb) {
+  localStorage.setItem(LB_KEY, JSON.stringify(lb));
+}
+
+function addScore(nombre, puntos) {
+  const lb = getLeaderboard();
+  lb.push({ nombre, puntos, fecha: new Date().toLocaleDateString('es-ES') });
+  lb.sort((a, b) => b.puntos - a.puntos);
+  const trimmed = lb.slice(0, MAX_ENTRIES);
+  saveLeaderboard(trimmed);
+  return trimmed;
+}
+
+function clearLeaderboard() {
+  if (confirm('¿Borrar todo el ranking?')) {
+    localStorage.removeItem(LB_KEY);
+    renderLeaderboard([], -1);
+  }
+}
+
+// ══════════════════════════════════
+//  RENDER TABLA
+// ══════════════════════════════════
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function renderLeaderboard(lb, currentIndex) {
+  const tbody = document.getElementById('cuerpotabla');
+
+  if (lb.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="lb-empty">Sé el primero en el ranking</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lb.map((entry, i) => {
+    const medal = MEDALS[i] || '';
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : '';
+    const currentClass = i === currentIndex ? 'current-run' : '';
+    const pts = entry.puntos.toLocaleString('es-ES');
+    return `
+      <tr class="${rankClass} ${currentClass}">
+        <td><span class="rank-medal">${medal}</span>${i + 1}</td>
+        <td>${entry.nombre}</td>
+        <td>${pts}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+//  RENDER RECOMPENSAS
+// ══════════════════════════════════
+function renderRewards(score, time) {
+  const grid = document.getElementById('rewards-grid');
+
+  grid.innerHTML = REWARDS.map(r => `
+    <div class="reward-badge ${r.rarity}" id="badge-${r.id}">
+      <span class="icon">${r.icon}</span>
+      <span class="name">${r.name}</span>
+      <span class="pts">${r.desc}</span>
+    </div>
+  `).join('');
+
+  // Desbloquear con delay escalonado
+  REWARDS.forEach((r, i) => {
+    if (r.condition(score, time)) {
+      setTimeout(() => {
+        const el = document.getElementById(`badge-${r.id}`);
+        el.classList.add('unlocked', 'pop');
+      }, 700 + i * 200);
+    }
   });
 }
 
-generarTabla();
+// ══════════════════════════════════
+//  MOSTRAR RESULTADO
+// ══════════════════════════════════
+function showResult(nombre, score, timeSeconds, won) {
+  // Título
+  const titleEl = document.getElementById('result-title');
+  titleEl.textContent = won ? '¡VICTORIA!' : '¡DERROTA!';
+  titleEl.className = `result-title ${won ? 'win' : 'lose'} anim`;
+
+  // Score
+  document.getElementById('result-score').textContent = score.toLocaleString('es-ES');
+
+  // Recompensas
+  renderRewards(score, timeSeconds);
+
+  // Leaderboard
+  const prevBest = getLeaderboard()[0]?.puntos || 0;
+  const lb = won ? addScore(nombre, score) : getLeaderboard();
+  const currentIndex = lb.findIndex(e => e.nombre === nombre && e.puntos === score);
+  renderLeaderboard(lb, currentIndex);
+
+  // Nuevo récord
+  if (won && score > prevBest) {
+    document.getElementById('result-score').classList.add('new-best');
+    document.getElementById('new-best-badge').classList.add('visible');
+  }
+}
+
+// ══════════════════════════════════
+//  COMPARTIR
+// ══════════════════════════════════
+function shareScore() {
+  const score = document.getElementById('result-score').textContent;
+  const text = `¡He conseguido ${score} puntos en Tap-Tap Boss! ⚔️ ¿Puedes superarme?`;
+  if (navigator.share) {
+    navigator.share({ title: 'Tap-Tap Boss', text });
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('¡Texto copiado al portapapeles!'));
+  }
+}
+
+function restartGame() {
+  alert('Reiniciando partida...');
+  // En tu proyecto: llamar a tu función startGame()
+}
+
+// ══════════════════════════════════
+//  DEMO — simula una partida
+// ══════════════════════════════════
+// Añade datos de prueba al localStorage para ver el ranking
+const demoData = [
+  { nombre: 'Beatriz', puntos: 1800, fecha: '20/3/2026' },
+  { nombre: 'Carlos',  puntos: 1350, fecha: '21/3/2026' },
+  { nombre: 'Ana',     puntos: 950,  fecha: '22/3/2026' },
+];
+if (!localStorage.getItem(LB_KEY)) {
+  saveLeaderboard(demoData);
+}
+
+// Simula resultado: jugador "Tú", 2100 pts, 18 segundos, victoria
+showResult('Tú', 2100, 18, true);
