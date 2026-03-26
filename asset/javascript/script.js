@@ -82,18 +82,16 @@ function restartGame() {
 // ══════════════════════════════════
 //  MARKER EVENTS
 // ══════════════════════════════════
-const target = document.querySelector("[mindar-image-target]");
-
-target.addEventListener("targetFound", () => {
+const target = document.querySelector('[mindar-image-target]');
+target.addEventListener('targetFound', () => {
     markerVisible = true;
-    scanPrompt.style.display = "none";
-    const tapHint = document.getElementById("tap-hint");
-    if (tapHint) tapHint.setAttribute("visible", true);
+    scanPrompt.style.display = 'none';
+    const tapHint = document.getElementById('tap-hint');
+    if (tapHint) tapHint.setAttribute('visible', true);
 });
-
-target.addEventListener("targetLost", () => {
+target.addEventListener('targetLost', () => {
     markerVisible = false;
-    scanPrompt.style.display = "flex";
+    scanPrompt.style.display = 'flex';
 });
 
 // ══════════════════════════════════
