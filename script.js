@@ -1,7 +1,7 @@
 // Auto-arrancar si viene del QT
-window.addEventListener("load", () => {
+window.addEventListener('load', () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("autostart") == "1") {
+    if (params.get('autostart') === '1') {
         startGame();
     }
 });
