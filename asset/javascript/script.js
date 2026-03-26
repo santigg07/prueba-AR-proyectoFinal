@@ -335,3 +335,19 @@ function shareScore() {
             .then(() => alert('¡Copiado al portapapeles!'));
     }
 }
+
+
+// Esperar a que MindAR arranque antes de habilitar el botón
+const scene = document.querySelector('a-scene');
+scene.addEventListener('arReady', () => {
+    console.log('MindAR listo');
+    // Opcional: cambiar el texto del overlay cuando la cámara esté activa
+    document.querySelector('.overlay-sub').textContent = 
+        'Cámara lista — apunta al flyer y pulsa Empezar';
+});
+
+scene.addEventListener('arError', (e) => {
+    console.error('Error MindAR:', e);
+    document.querySelector('.overlay-sub').textContent = 
+        'Error al acceder a la cámara. Permite el permiso e intenta de nuevo.';
+});
