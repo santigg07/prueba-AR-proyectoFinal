@@ -1,10 +1,3 @@
-// Auto-arrancar si viene del QT
-window.addEventListener('load', () => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('autostart') === '1') {
-        startGame();
-    }
-});
 
 // ══════════════════════════════════
 //  CONFIG
@@ -89,18 +82,18 @@ function restartGame() {
 // ══════════════════════════════════
 //  MARKER EVENTS
 // ══════════════════════════════════
-const marker = document.getElementById('boss-marker');
+const target = document.querySelector("[mindar-image-target]");
 
-marker.addEventListener('markerFound', () => {
+target.addEventListener("targetFound", () => {
     markerVisible = true;
-    scanPrompt.style.display = 'none';
-    const tapHint = document.getElementById('tap-hint');
-    if (tapHint) tapHint.setAttribute('visible', true);
+    scanPrompt.style.display = "none";
+    const tapHint = document.getElementById("tap-hint");
+    if (tapHint) tapHint.setAttribute("visible", true);
 });
 
-marker.addEventListener('markerLost', () => {
+target.addEventListener("targetLost", () => {
     markerVisible = false;
-    scanPrompt.style.display = 'flex';
+    scanPrompt.style.display = "flex";
 });
 
 // ══════════════════════════════════

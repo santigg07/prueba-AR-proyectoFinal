@@ -96,20 +96,19 @@
      A-FRAME + AR.JS SCENE
 ════════════════════════════════ -->
 <a-scene
-  mindar-image="imageTargetSrc: targets.mind; autoStart: true"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
+  embedded
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  renderer="antialias: true; alpha: true;"
   vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
+  id="ar-scene"
+  style="position:fixed;top:0;left:0;width:100%;height:100%;">
 
   <a-assets>
     <img id="boss-img"  src="vaia.png">
     <img id="suelo-img" src="suelo.png">
   </a-assets>
 
-  <a-camera psition="0 0 0" look-controls="enabled: false"></a-camera>
-
-  <a-entity mindar-image-target="targetIndex: 0" id="boss-marker"></a-entity>
+  <a-marker preset="hiro" id="boss-marker" smooth="true" smoothCount="10" smoothTolerance="0.01">
 
     <!-- Suelo -->
     <a-plane
