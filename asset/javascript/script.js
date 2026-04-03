@@ -117,6 +117,86 @@ marker.addEventListener('markerLost', () => {
 });
 
 // ══════════════════════════════════
+//  HIT DETECTION — boss en pantalla
+// ══════════════════════════════════
+
+// Devuelve {x, y, w, h} del boss en píxeles de pantalla, o null si no visible
+function getBossScreenRect() {
+    const sprite = document.getElementById('boss-sprite');
+    if (!sprite || !sprite.object3D) return null;
+
+    const scene  = document.querySelector('a-scene');
+    const camera = scene && scene.camera;
+    if (!camera) return null;
+
+    // Posición mundial del boss
+    const worldPos = new THREE.Vector3();
+    sprite.object3D.getWorldPosition(worldPos);
+
+    // Proyectar al espacio de clip (-1..1)
+    const projected = worldPos.clone().project(camera);
+
+    // Convertir a píxeles de pantalla
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
+    const cx = ( projected.x * 0.5 + 0.5) * sw;
+    const cy = (-projected.y * 0.5 + 0.5) * sh;
+
+    // Si está detrás de la cámara, ignorar
+    if (projected.z > 1) return null;
+
+    // Estimar tamaño en pantalla a partir del tamaño 3D del plano
+    // El a-plane tiene width=1.2, height=1.4 en unidades A-Frame
+    // Usamos la escala de proyección para convertir a píxeles
+    const refPos = worldPos.clone();
+    refPos.x += 0.6; // mitad del ancho del boss (width/2)
+    const projectedRef = refPos.clone().project(camera);
+    const refCx = (projectedRef.x * 0.5 + 0.5) * sw;
+    const halfW = Math.abs(refCx - cx);
+    const halfH = halfW * (1.4 / 1.2); // mantener proporción height/width
+
+    // Añadir margen de tolerancia táctil (20px extra en móvil)
+    const margin = 20;
+
+    return {
+        x: cx - halfW - margin,
+        y: cy - halfH - margin,
+        w: (halfW + margin) * 2,
+        h: (halfH + margin) * 2,
+        cx, cy
+    };
+}
+
+function isTapOnBoss(tapX, tapY) {
+    const rect = getBossScreenRect();
+    if (!rect) return false;
+    return tapX >= rect.x && tapX <= rect.x + rect.w &&
+           tapY >= rect.y && tapY <= rect.y + rect.h;
+}
+
+// ── Debug: mostrar el hitbox del boss (descomenta para probar) ──
+// function drawDebugHitbox() {
+//     let dbg = document.getElementById('boss-debug-box');
+//     if (!dbg) {
+//         dbg = document.createElement('div');
+//         dbg.id = 'boss-debug-box';
+//         dbg.style.cssText = 'position:fixed;border:2px solid lime;pointer-events:none;z-index:9999;box-sizing:border-box;';
+//         document.body.appendChild(dbg);
+//     }
+//     const rect = getBossScreenRect();
+//     if (rect) {
+//         dbg.style.display = 'block';
+//         dbg.style.left   = rect.x + 'px';
+//         dbg.style.top    = rect.y + 'px';
+//         dbg.style.width  = rect.w + 'px';
+//         dbg.style.height = rect.h + 'px';
+//     } else {
+//         dbg.style.display = 'none';
+//     }
+// }
+// setInterval(drawDebugHitbox, 100);
+
+// ══════════════════════════════════
 //  INPUT — golpear al boss
 // ══════════════════════════════════
 document.addEventListener('touchstart', handleTap, { passive: false });
@@ -127,14 +207,38 @@ function handleTap(e) {
     if (!gameActive) return;
     if (!markerVisible) return;
 
-    // Comprobar si tocó un proyectil
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
 
-    if (tryDeflectProjectile(x, y)) return; // bloqueó un proyectil
+    // Primero comprobar si tocó un proyectil
+    if (tryDeflectProjectile(x, y)) {
+        e.preventDefault();
+        return;
+    }
+
+    // Luego comprobar si tocó al boss
+    if (!isTapOnBoss(x, y)) {
+        // Toque fuera del boss — feedback visual de fallo
+        spawnMissIndicator(x, y);
+        return;
+    }
 
     e.preventDefault();
     dealDamage(x, y);
+}
+
+// Indicador visual de fallo (toque fuera del boss)
+function spawnMissIndicator(x, y) {
+    const el = document.createElement('div');
+    el.className = 'damage-number';
+    el.textContent = 'FALLO';
+    el.style.left     = x + 'px';
+    el.style.top      = y + 'px';
+    el.style.color    = 'rgba(255,255,255,0.4)';
+    el.style.fontSize = '16px';
+    el.style.fontWeight = '600';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 700);
 }
 
 // ══════════════════════════════════
