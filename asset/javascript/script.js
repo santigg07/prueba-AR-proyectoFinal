@@ -276,6 +276,7 @@ function showVictory() {
     gameActive = false;
 
     const tiempoSegundos = Math.floor((Date.now() - tiempoInicio) / 1000);
+    
     const nombre = prompt('¿Cómo te llamas?') || 'Jugador';
 
     // Título
