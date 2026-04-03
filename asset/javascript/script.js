@@ -276,7 +276,7 @@ function showVictory() {
     gameActive = false;
 
     const tiempoSegundos = Math.floor((Date.now() - tiempoInicio) / 1000);
-    const nombre = 'Jugador'; // puedes pedir el nombre con un prompt() si quieres
+    const nombre = prompt('¿Cómo te llamas?') || 'Jugador';
 
     // Título
     const titleEl = document.getElementById('result-title');
