@@ -1,4 +1,3 @@
-
 // ══════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════
@@ -82,14 +81,16 @@ function restartGame() {
 // ══════════════════════════════════
 //  MARKER EVENTS
 // ══════════════════════════════════
-const target = document.querySelector('[mindar-image-target]');
-target.addEventListener('targetFound', () => {
+const marker = document.getElementById('boss-marker');
+
+marker.addEventListener('markerFound', () => {
     markerVisible = true;
     scanPrompt.style.display = 'none';
     const tapHint = document.getElementById('tap-hint');
     if (tapHint) tapHint.setAttribute('visible', true);
 });
-target.addEventListener('targetLost', () => {
+
+marker.addEventListener('markerLost', () => {
     markerVisible = false;
     scanPrompt.style.display = 'flex';
 });
@@ -275,8 +276,7 @@ function showVictory() {
     gameActive = false;
 
     const tiempoSegundos = Math.floor((Date.now() - tiempoInicio) / 1000);
-    
-    const nombre = prompt('¿Cómo te llamas?') || 'Jugador';
+    const nombre = 'Jugador'; // puedes pedir el nombre con un prompt() si quieres
 
     // Título
     const titleEl = document.getElementById('result-title');
@@ -335,19 +335,3 @@ function shareScore() {
             .then(() => alert('¡Copiado al portapapeles!'));
     }
 }
-
-
-// Esperar a que MindAR arranque antes de habilitar el botón
-const scene = document.querySelector('a-scene');
-scene.addEventListener('arReady', () => {
-    console.log('MindAR listo');
-    // Opcional: cambiar el texto del overlay cuando la cámara esté activa
-    document.querySelector('.overlay-sub').textContent = 
-        'Cámara lista — apunta al flyer y pulsa Empezar';
-});
-
-scene.addEventListener('arError', (e) => {
-    console.error('Error MindAR:', e);
-    document.querySelector('.overlay-sub').textContent = 
-        'Error al acceder a la cámara. Permite el permiso e intenta de nuevo.';
-});
