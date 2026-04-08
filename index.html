@@ -13,8 +13,29 @@
   <link rel="stylesheet" href="asset/css/mindar.css">
 </head>
 <body>
+  <div id="debug-log" style="
+  position:fixed; top:0; left:0; right:0;
+  background:rgba(0,0,0,0.85); color:#00ff88;
+  font-family:monospace; font-size:11px;
+  padding:8px; z-index:99999;
+  max-height:40vh; overflow-y:auto;
+  pointer-events:none;
+"></div>
+<script>
+  const _dl = document.getElementById('debug-log');
+  function dlog(msg, color) {
+    const line = document.createElement('div');
+    line.style.color = color || '#00ff88';
+    line.textContent = new Date().toISOString().slice(11,19) + ' ' + msg;
+    _dl.appendChild(line);
+    _dl.scrollTop = _dl.scrollHeight;
+  }
+  window.addEventListener('error', e => dlog('ERROR: ' + e.message + ' ' + e.filename + ':' + e.lineno, '#ff4444'));
+  dlog('DOM cargando...');
+</script>
 <script src="https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js"></script>
 <script>eruda.init();</script>
+
 <!-- ════════════════════════════
      LOADER
 ════════════════════════════ -->
@@ -177,6 +198,22 @@
 
 <!-- MindAR — después, usa las variables de script.js -->
 <script src="asset/javascript/mindar.js"></script>
+
+<script>
+  dlog('HTML completamente parseado');
+
+  document.addEventListener('DOMContentLoaded', () => dlog('DOMContentLoaded'));
+  window.addEventListener('load', () => dlog('window.load — todo cargado'));
+
+  const sc = document.getElementById('ar-scene');
+  if (sc) {
+    sc.addEventListener('loaded',   () => dlog('A-Frame: scene loaded'));
+    sc.addEventListener('arReady',  () => dlog('MindAR: arReady ✅', '#00ffff'));
+    sc.addEventListener('arError',  (e) => dlog('MindAR: arError ❌ ' + JSON.stringify(e.detail), '#ff4444'));
+  } else {
+    dlog('ERROR: ar-scene no encontrado', '#ff4444');
+  }
+</script>
 
 </body>
 </html>
