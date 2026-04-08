@@ -4,38 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Tap-Tap Boss Fight AR</title>
-
-  <!-- MindAR — incluye A-Frame, NO añadir A-Frame por separado -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-  <!-- Estilos: base + fixes MindAR -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <link rel="stylesheet" href="asset/css/style.css">
-  <link rel="stylesheet" href="asset/css/mindar.css">
 </head>
-
-<script src="https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js"></script>
-<script>eruda.init();</script>
-
 <body>
 
-<!-- ════════════════════════════
-     LOADER
-════════════════════════════ -->
-<div id="ar-loader">
-  <div class="loader-ring"></div>
-  <div class="loader-text" id="loader-text">Iniciando cámara...</div>
-  <div class="loader-error" id="loader-error">
-    No se pudo acceder a la cámara.<br>
-    Permite el permiso en Chrome e intenta de nuevo.
-  </div>
-</div>
-
-<!-- ════════════════════════════
+<!-- ════════════════════════════════
      HUD
-════════════════════════════ -->
+════════════════════════════════ -->
 <div id="hud">
   <div id="top-bar">
 
+    <!-- Boss HP -->
     <div id="hp-container">
       <div id="hp-label">BOSS HP</div>
       <div id="hp-bar-bg">
@@ -43,11 +24,13 @@
       </div>
     </div>
 
+    <!-- Score + Combo -->
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <div id="combo-display"      style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
+      <div id="combo-display" style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
       <div id="multiplier-display" style="opacity:0;font-size:10px;font-weight:700;letter-spacing:2px;color:#ff8800;transition:opacity 0.2s;">×1 PTS</div>
     </div>
 
+    <!-- Score -->
     <div>
       <div id="score-label">SCORE</div>
       <div id="score-display">0</div>
@@ -55,8 +38,9 @@
 
   </div>
 
+  <!-- Player HP -->
   <div id="player-hp-row">
-    <div id="player-hp-label">TU VIDA</div>
+    <div id="player-hp-label">VIDA PLAYER</div>
     <div id="player-hp-bg">
       <div id="player-hp-bar"></div>
     </div>
@@ -66,16 +50,13 @@
 <!-- Scan prompt -->
 <div id="scan-prompt">
   <span class="scan-icon">⟳</span>
-  Apunta la cámara al flyer para invocar al boss
+  Apunta el marcador Hiro para invocar al boss
 </div>
 
 <!-- Start overlay -->
 <div id="overlay">
   <div class="overlay-title">TAP-TAP<br>BOSS</div>
-  <div class="overlay-sub">
-    Apunta la cámara al flyer<br>
-    ¡Golpea al boss y esquiva sus ataques!
-  </div>
+  <div class="overlay-sub">Escanea el marcador con la cámara<br>¡Golpea al boss y esquiva sus ataques!</div>
   <button class="btn-play" onclick="startGame()">⚔️ EMPEZAR</button>
 </div>
 
@@ -91,6 +72,7 @@
       <div class="new-best-badge" id="new-best-badge">✦ NUEVO RÉCORD ✦</div>
     </div>
 
+    <!-- Stats de partida -->
     <div id="result-stats" style="
         display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
         font-size:12px;color:rgba(255,255,255,0.55);width:100%;
@@ -125,27 +107,23 @@
 </div>
 
 
-<!-- ════════════════════════════
-     ESCENA AR — MindAR
-════════════════════════════ -->
+<!-- ════════════════════════════════
+     A-FRAME + AR.JS SCENE
+════════════════════════════════ -->
 <a-scene
-  id="ar-scene"
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01;"
-  color-space="sRGB"
-  renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true;"
+  embedded
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  renderer="antialias: true; alpha: true;"
   vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
+  id="ar-scene"
+  style="position:fixed;top:0;left:0;width:100%;height:100%;">
 
   <a-assets>
     <img id="boss-img"  src="asset/imagen/vaia.png">
     <img id="suelo-img" src="asset/imagen/suelo.png">
   </a-assets>
 
-  <!-- Una sola cámara — requerido por MindAR -->
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-  <!-- Target: la imagen del boss compilada en targets.mind -->
-  <a-entity id="boss-marker" mindar-image-target="targetIndex: 0">
+  <a-marker preset="hiro" id="boss-marker" smooth="true" smoothCount="10" smoothTolerance="0.01">
 
     <a-plane
       id="arena-floor"
@@ -171,15 +149,11 @@
       animation="property: position; to: 0 1.4 0; dir: alternate; loop: true; dur: 1000">
     </a-text>
 
-  </a-entity>
+  </a-marker>
 
+  <a-entity camera></a-entity>
 </a-scene>
 
-<!-- Juego — primero, define markerVisible y el resto del estado -->
 <script src="asset/javascript/script.js"></script>
-
-<!-- MindAR — después, usa las variables de script.js -->
-<script src="asset/javascript/mindar.js"></script>
-
 </body>
 </html>
