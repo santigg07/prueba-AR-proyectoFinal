@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Tap-Tap Boss Fight AR</title>
 
-  <!-- MindAR — incluye A-Frame, NO añadir A-Frame por separado -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-
   <!-- Estilos: base + fixes MindAR -->
   <link rel="stylesheet" href="asset/css/style.css">
   <link rel="stylesheet" href="asset/css/mindar.css">
@@ -193,11 +190,6 @@
 
 </a-scene>
 
-<!-- Juego — primero, define markerVisible y el resto del estado -->
-<script src="asset/javascript/script.js"></script>
-
-<!-- MindAR — después, usa las variables de script.js -->
-<script src="asset/javascript/mindar.js"></script>
 
 <script>
   dlog('HTML completamente parseado');
@@ -215,5 +207,8 @@
   }
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+<script src="asset/javascript/script.js"></script>
+<script src="asset/javascript/mindar.js"></script>
 </body>
 </html>
