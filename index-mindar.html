@@ -5,76 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Tap-Tap Boss Fight AR</title>
 
-  <!-- MindAR — incluye A-Frame dentro, NO añadir A-Frame por separado -->
+  <!-- MindAR — incluye A-Frame, NO añadir A-Frame por separado -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
+  <!-- Estilos: base + fixes MindAR -->
   <link rel="stylesheet" href="asset/css/style.css">
-
-  <style>
-    /* Fixes específicos para MindAR en móvil */
-    body { background: #000; }
-
-    .mindar-ui-overlay,
-    .mindar-ui-loading,
-    .mindar-ui-scanning,
-    .mindar-ui-error { display: none !important; }
-
-    a-scene {
-      position: fixed !important;
-      top: 0; left: 0;
-      width: 100vw !important;
-      height: 100vh !important;
-      z-index: 0 !important;
-    }
-
-    /* Loader propio mientras MindAR inicializa */
-    #ar-loader {
-      position: fixed;
-      inset: 0;
-      z-index: 1100;
-      background: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      transition: opacity 0.6s ease;
-    }
-    #ar-loader.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    .loader-ring {
-      width: 56px; height: 56px;
-      border: 4px solid rgba(0,255,136,0.15);
-      border-top-color: #00ff88;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loader-text {
-      color: rgba(255,255,255,0.6);
-      font-family: 'Segoe UI', sans-serif;
-      font-size: 14px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    .loader-error {
-      color: #ff4444;
-      font-family: 'Segoe UI', sans-serif;
-      font-size: 13px;
-      text-align: center;
-      padding: 0 32px;
-      line-height: 1.6;
-      display: none;
-    }
-    .loader-error.visible { display: block; }
-  </style>
+  <link rel="stylesheet" href="asset/css/mindar.css">
 </head>
 <body>
 
 <!-- ════════════════════════════
-     LOADER (mientras MindAR arranca)
+     LOADER
 ════════════════════════════ -->
 <div id="ar-loader">
   <div class="loader-ring"></div>
@@ -99,7 +40,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <div id="combo-display"     style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
+      <div id="combo-display"      style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
       <div id="multiplier-display" style="opacity:0;font-size:10px;font-weight:700;letter-spacing:2px;color:#ff8800;transition:opacity 0.2s;">×1 PTS</div>
     </div>
 
@@ -196,12 +137,12 @@
     <img id="suelo-img" src="asset/imagen/suelo.png">
   </a-assets>
 
+  <!-- Una sola cámara — requerido por MindAR -->
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <!-- Target 0 = primera imagen compilada en targets.mind -->
+  <!-- Target: la imagen del boss compilada en targets.mind -->
   <a-entity id="boss-marker" mindar-image-target="targetIndex: 0">
 
-    <!-- Suelo -->
     <a-plane
       id="arena-floor"
       position="0 0 0"
@@ -210,7 +151,6 @@
       material="src: #suelo-img; transparent: true; alphaTest: 0.05">
     </a-plane>
 
-    <!-- Boss -->
     <a-plane
       id="boss-sprite"
       position="0 0.5 -0.6"
@@ -219,7 +159,6 @@
       material="src: #boss-img; transparent: true; alphaTest: 0.1">
     </a-plane>
 
-    <!-- Texto flotante -->
     <a-text
       id="tap-hint"
       value="¡TOCA LA PANTALLA!"
@@ -230,81 +169,13 @@
 
   </a-entity>
 
-  <a-entity camera></a-entity>
-
 </a-scene>
 
-
-<script>
-// ══════════════════════════════════
-//  MINDAR — eventos de ciclo de vida
-// ══════════════════════════════════
-const arScene  = document.getElementById('ar-scene');
-const arLoader = document.getElementById('ar-loader');
-const loaderText  = document.getElementById('loader-text');
-const loaderError = document.getElementById('loader-error');
-
-// MindAR listo — ocultar loader y mostrar overlay de inicio
-arScene.addEventListener('arReady', () => {
-    arLoader.classList.add('hidden');
-    // El overlay de inicio ya es visible por defecto en el CSS
-});
-
-// Error de MindAR (ej: cámara denegada)
-arScene.addEventListener('arError', () => {
-    loaderText.style.display  = 'none';
-    loaderError.classList.add('visible');
-    document.querySelector('.loader-ring').style.display = 'none';
-});
-
-// Cambia el texto del loader mientras inicializa
-setTimeout(() => { if (loaderText) loaderText.textContent = 'Cargando recursos...'; }, 1000);
-setTimeout(() => { if (loaderText) loaderText.textContent = 'Preparando AR...'; },     3000);
-
-// ══════════════════════════════════
-//  MARKER EVENTS — MindAR usa
-//  targetFound / targetLost
-// ══════════════════════════════════
-const marker = document.getElementById('boss-marker');
-
-marker.addEventListener('targetFound', () => {
-    markerVisible = true;
-    document.getElementById('scan-prompt').style.display = 'none';
-    const tapHint = document.getElementById('tap-hint');
-    if (tapHint) tapHint.setAttribute('visible', true);
-});
-
-marker.addEventListener('targetLost', () => {
-    markerVisible = false;
-    document.getElementById('scan-prompt').style.display = 'flex';
-});
-</script>
-
-<!-- Script del juego — igual que tu versión AR.js -->
+<!-- Juego — primero, define markerVisible y el resto del estado -->
 <script src="asset/javascript/script.js"></script>
 
-<script>
-// ══════════════════════════════════
-//  OVERRIDE: quitar los listeners
-//  de AR.js que ya no existen
-// ══════════════════════════════════
-// En script.js hay un bloque que busca #boss-marker con eventos
-// markerFound/markerLost — en MindAR no funcionan, pero los
-// hemos redefinido arriba con targetFound/targetLost,
-// así que no hace falta cambiar script.js.
-//
-// Si ves errores de "marker.addEventListener is not a function",
-// descomenta estas líneas:
-//
-// const _marker = document.getElementById('boss-marker');
-// if (_marker && !_marker._mindARPatched) {
-//     _marker.addEventListener = function(evt, fn) {
-//         if (evt === 'markerFound') this.addEventListener('targetFound', fn);
-//         if (evt === 'markerLost')  this.addEventListener('targetLost',  fn);
-//     };
-//     _marker._mindARPatched = true;
-// }
-</script>
+<!-- MindAR — después, usa las variables de script.js -->
+<script src="asset/javascript/mindar.js"></script>
 
 </body>
 </html>
