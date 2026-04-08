@@ -15,15 +15,34 @@
 ════════════════════════════════ -->
 <div id="hud">
   <div id="top-bar">
+
+    <!-- Boss HP -->
     <div id="hp-container">
       <div id="hp-label">BOSS HP</div>
       <div id="hp-bar-bg">
         <div id="hp-bar"></div>
       </div>
     </div>
+
+    <!-- Score + Combo -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <div id="combo-display" style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
+      <div id="multiplier-display" style="opacity:0;font-size:10px;font-weight:700;letter-spacing:2px;color:#ff8800;transition:opacity 0.2s;">×1 PTS</div>
+    </div>
+
+    <!-- Score -->
     <div>
       <div id="score-label">SCORE</div>
       <div id="score-display">0</div>
+    </div>
+
+  </div>
+
+  <!-- Player HP -->
+  <div id="player-hp-row">
+    <div id="player-hp-label">VIDA PLAYER</div>
+    <div id="player-hp-bg">
+      <div id="player-hp-bar"></div>
     </div>
   </div>
 </div>
@@ -37,7 +56,7 @@
 <!-- Start overlay -->
 <div id="overlay">
   <div class="overlay-title">TAP-TAP<br>BOSS</div>
-  <div class="overlay-sub">Escanea el marcador con la cámara<br>¡y derrota al enemigo a golpes!</div>
+  <div class="overlay-sub">Escanea el marcador con la cámara<br>¡Golpea al boss y esquiva sus ataques!</div>
   <button class="btn-play" onclick="startGame()">⚔️ EMPEZAR</button>
 </div>
 
@@ -45,17 +64,20 @@
 <div id="result-overlay">
   <div class="result-card">
 
-    <!-- Título -->
     <div class="result-title win" id="result-title">¡VICTORIA!</div>
 
-    <!-- Puntuación -->
     <div class="score-block">
       <div class="score-label-sm">Puntuación</div>
       <div class="score-value" id="result-score">0</div>
       <div class="new-best-badge" id="new-best-badge">✦ NUEVO RÉCORD ✦</div>
     </div>
 
-    <!-- Recompensas -->
+    <!-- Stats de partida -->
+    <div id="result-stats" style="
+        display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
+        font-size:12px;color:rgba(255,255,255,0.55);width:100%;
+    "></div>
+
     <div style="width:100%;display:flex;flex-direction:column;gap:8px;align-items:center;">
       <div class="rewards-title">Recompensas obtenidas</div>
       <div class="rewards-grid" id="rewards-grid"></div>
@@ -63,7 +85,6 @@
 
     <div class="divider"></div>
 
-    <!-- Ranking -->
     <div style="width:100%;">
       <div class="lb-header">
         <div class="lb-title">🏆 Ranking</div>
@@ -71,17 +92,12 @@
       </div>
       <table class="lb-table">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Jugador</th>
-            <th>Puntos</th>
-          </tr>
+          <tr><th>#</th><th>Jugador</th><th>Puntos</th></tr>
         </thead>
         <tbody id="cuerpotabla"></tbody>
       </table>
     </div>
 
-    <!-- Botones -->
     <div class="btn-row">
       <button class="btn-play btn-secondary" onclick="shareScore()">📤 Compartir</button>
       <button class="btn-play btn-primary"   onclick="restartGame()">⚔️ Rejugar</button>
@@ -109,41 +125,33 @@
 
   <a-marker preset="hiro" id="boss-marker" smooth="true" smoothCount="10" smoothTolerance="0.01">
 
-    <!-- Suelo -->
     <a-plane
       id="arena-floor"
       position="0 0 0"
-      width="10"
-      height="2.4"
+      width="10" height="2.4"
       rotation="-90 0 0"
       material="src: #suelo-img; transparent: true; alphaTest: 0.05">
     </a-plane>
 
-    <!-- Boss -->
     <a-plane
       id="boss-sprite"
       position="0 0.5 -0.6"
-      width="1.2"
-      height="1.4"
+      width="1.2" height="1.4"
       rotation="-90 0 0"
       material="src: #boss-img; transparent: true; alphaTest: 0.1">
     </a-plane>
 
-    <!-- Texto flotante -->
     <a-text
       id="tap-hint"
       value="¡TOCA LA PANTALLA!"
-      align="center"
-      color="#ffdd00"
-      position="0 1.3 0"
-      scale="0.5 0.5 0.5"
+      align="center" color="#ffdd00"
+      position="0 1.3 0" scale="0.5 0.5 0.5"
       animation="property: position; to: 0 1.4 0; dir: alternate; loop: true; dur: 1000">
     </a-text>
 
   </a-marker>
 
   <a-entity camera></a-entity>
-
 </a-scene>
 
 <script src="asset/javascript/script.js"></script>
