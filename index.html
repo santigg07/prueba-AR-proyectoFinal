@@ -71,8 +71,10 @@
     .loader-error.visible { display: block; }
   </style>
 </head>
+
 <script src="https://cdn.jsdelivr.net/npm/eruda@3/eruda.min.js"></script>
 <script>eruda.init();</script>
+
 <body>
 
 <!-- ════════════════════════════
@@ -267,16 +269,16 @@ setTimeout(() => { if (loaderText) loaderText.textContent = 'Preparando AR...'; 
 //  MARKER EVENTS — MindAR usa
 //  targetFound / targetLost
 // ══════════════════════════════════
-const marker = document.getElementById('boss-marker');
+const mindTarget = document.getElementById('boss-marker');
 
-marker.addEventListener('targetFound', () => {
+mindTarget.addEventListener('targetFound', () => {
     markerVisible = true;
     document.getElementById('scan-prompt').style.display = 'none';
     const tapHint = document.getElementById('tap-hint');
     if (tapHint) tapHint.setAttribute('visible', true);
 });
 
-marker.addEventListener('targetLost', () => {
+mindTarget.addEventListener('targetLost', () => {
     markerVisible = false;
     document.getElementById('scan-prompt').style.display = 'flex';
 });

@@ -104,17 +104,20 @@ function stopGame() {
 // ══════════════════════════════════
 const marker = document.getElementById('boss-marker');
 
-marker.addEventListener('markerFound', () => {
-    markerVisible = true;
-    scanPrompt.style.display = 'none';
-    const tapHint = document.getElementById('tap-hint');
-    if (tapHint) tapHint.setAttribute('visible', true);
-});
+// Solo registrar eventos AR.js si estamos en la versión con marcador Hiro
+if (marker && marker.hasAttribute('preset')) {
+    marker.addEventListener('markerFound', () => {
+        markerVisible = true;
+        scanPrompt.style.display = 'none';
+        const tapHint = document.getElementById('tap-hint');
+        if (tapHint) tapHint.setAttribute('visible', true);
+    });
 
-marker.addEventListener('markerLost', () => {
-    markerVisible = false;
-    scanPrompt.style.display = 'flex';
-});
+    marker.addEventListener('markerLost', () => {
+        markerVisible = false;
+        scanPrompt.style.display = 'flex';
+    });
+}
 
 // ══════════════════════════════════
 //  HIT DETECTION — boss en pantalla
