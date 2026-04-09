@@ -434,12 +434,17 @@ async function addScoreFirebase(nombre, puntos) {
 
 async function getLeaderboardFirebase() {
     try {
-        const q        = query(LB_REF, orderByChild('puntos'), limitToLast(MAX_ENTRIES));
-        const snapshot = await get(q);
+        const snapshot = await get(LB_REF);
         if (!snapshot.exists()) return [];
+
         const entries = [];
-        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
-        return entries.reverse(); // mayor primero
+        snapshot.forEach(child => {
+            entries.push({ key: child.key, ...child.val() });
+        });
+
+        // Ordenar en el cliente y coger el top MAX_ENTRIES
+        entries.sort((a, b) => b.puntos - a.puntos);
+        return entries.slice(0, MAX_ENTRIES);
     } catch (err) {
         console.error('Firebase getLeaderboard error:', err);
         return [];
@@ -459,16 +464,21 @@ async function clearLeaderboard() {
 // Actualización en tiempo real — si otro jugador termina mientras
 // estás en la pantalla de resultado, el ranking se actualiza solo
 function subscribeLeaderboard(currentNombre, currentPuntos) {
-    const q = query(LB_REF, orderByChild('puntos'), limitToLast(MAX_ENTRIES));
-    onValue(q, snapshot => {
+    onValue(LB_REF, snapshot => {
         if (!snapshot.exists()) { renderLeaderboard([], -1); return; }
+
         const entries = [];
-        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
-        entries.reverse();
-        const currentIndex = entries.findIndex(
+        snapshot.forEach(child => {
+            entries.push({ key: child.key, ...child.val() });
+        });
+
+        entries.sort((a, b) => b.puntos - a.puntos);
+        const top = entries.slice(0, MAX_ENTRIES);
+
+        const currentIndex = top.findIndex(
             e => e.nombre === currentNombre && e.puntos === currentPuntos
         );
-        renderLeaderboard(entries, currentIndex);
+        renderLeaderboard(top, currentIndex);
     });
 }
 
