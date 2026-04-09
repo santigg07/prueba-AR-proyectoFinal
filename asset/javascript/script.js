@@ -597,3 +597,14 @@ function shareScore() {
             .then(() => alert('¡Copiado al portapapeles!'));
     }
 }
+
+// ══════════════════════════════════
+//  EXPONER AL SCOPE GLOBAL
+//  Los módulos ES son privados por defecto —
+//  los onclick del HTML necesitan estas funciones
+//  en window para poder llamarlas.
+// ══════════════════════════════════
+window.startGame        = startGame;
+window.restartGame      = restartGame;
+window.clearLeaderboard = clearLeaderboard;
+window.shareScore       = shareScore;
