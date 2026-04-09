@@ -16,15 +16,32 @@
 ════════════════════════════════ -->
 <div id="hud">
   <div id="top-bar">
+    <!-- Boss HP -->
     <div id="hp-container">
       <div id="hp-label">BOSS HP</div>
       <div id="hp-bar-bg">
         <div id="hp-bar"></div>
       </div>
     </div>
+
+    <!-- Score + Combo -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <div id="combo-display" style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
+      <div id="multiplier-display" style="opacity:0;font-size:10px;font-weight:700;letter-spacing:2px;color:#ff8800;transition:opacity 0.2s;">×1 PTS</div>
+    </div>
+
+    <!-- Score -->
     <div>
       <div id="score-label">SCORE</div>
       <div id="score-display">0</div>
+    </div>
+  </div>
+
+  <!-- Player HP -->
+  <div id="player-hp-row">
+    <div id="player-hp-label">TU VIDA</div>
+    <div id="player-hp-bg">
+      <div id="player-hp-bar"></div>
     </div>
   </div>
 </div>
