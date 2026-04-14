@@ -1,10 +1,12 @@
 // ══════════════════════════════════
-//  FIREBASE — configuración
+//  FIREBASE — imports y configuración
 // ══════════════════════════════════
 import { initializeApp }
     from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
-import { getDatabase, ref, push, get, remove, onValue, query, orderByChild, limitToLast }
+import { getDatabase, ref, push, get, remove, onValue }
     from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut }
+    from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
 const firebaseConfig = {
     apiKey:            'AIzaSyBsRTuRfoBYNWCy_EAVjfeuRrm48x-L0So',
@@ -18,8 +20,12 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db          = getDatabase(firebaseApp);
+const auth        = getAuth(firebaseApp);
 const LB_REF      = ref(db, 'leaderboard');
 const MAX_ENTRIES = 8;
+
+// Login anónimo automático al cargar — necesario para poder escribir
+signInAnonymously(auth).catch(err => console.warn('Auth anónima fallida:', err));
 
 // ══════════════════════════════════
 //  CONFIG JUEGO
@@ -95,7 +101,6 @@ function startGame() {
     updateComboUI();
     resultOverlay.classList.remove('visible');
     clearProjectiles();
-
     attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
 }
 
@@ -113,7 +118,6 @@ function stopGame() {
 //  MARKER EVENTS (AR.js)
 // ══════════════════════════════════
 const marker = document.getElementById('boss-marker');
-
 if (marker && marker.hasAttribute('preset')) {
     marker.addEventListener('markerFound', () => {
         markerVisible = true;
@@ -136,17 +140,14 @@ function getBossScreenRect() {
     const scene  = document.querySelector('a-scene');
     const camera = scene && scene.camera;
     if (!camera) return null;
-
     const worldPos = new THREE.Vector3();
     sprite.object3D.getWorldPosition(worldPos);
     const projected = worldPos.clone().project(camera);
     if (projected.z > 1) return null;
-
     const sw = window.innerWidth;
     const sh = window.innerHeight;
     const cx = ( projected.x * 0.5 + 0.5) * sw;
     const cy = (-projected.y * 0.5 + 0.5) * sh;
-
     const refPos = worldPos.clone();
     refPos.x += 0.6;
     const projectedRef = refPos.clone().project(camera);
@@ -154,9 +155,8 @@ function getBossScreenRect() {
     const halfW  = Math.abs(refCx - cx);
     const halfH  = halfW * (1.4 / 1.2);
     const margin = 20;
-
     return { x: cx - halfW - margin, y: cy - halfH - margin,
-             w: (halfW + margin) * 2,  h: (halfH + margin) * 2, cx, cy };
+             w: (halfW + margin) * 2,  h: (halfH + margin) * 2 };
 }
 
 function isTapOnBoss(tapX, tapY) {
@@ -176,13 +176,10 @@ function handleTap(e) {
     if (e.target.tagName === 'BUTTON') return;
     if (!gameActive)    return;
     if (!markerVisible) return;
-
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
-
     if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
     if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
-
     e.preventDefault();
     dealDamage(x, y);
 }
@@ -205,24 +202,20 @@ function spawnMissIndicator(x, y) {
 // ══════════════════════════════════
 function dealDamage(x, y) {
     if (bossHP <= 0) return;
-
     bossHP -= DAMAGE_PER_TAP;
     comboCount++;
     if (comboCount > maxCombo) maxCombo = comboCount;
     if (comboTimer) clearTimeout(comboTimer);
     comboTimer = setTimeout(() => { comboCount = 0; updateComboUI(); }, COMBO_RESET_MS);
-
     const multiplier = getMultiplier();
     const pts = Math.round(SCORE_BASE * multiplier);
     score += pts;
-
     updateHpUI();
     updateScoreUI();
     updateComboUI();
     spawnRipple(x, y);
     spawnDamageNumber(x, y, pts);
     flashBoss();
-
     if (bossHP <= 0) { bossHP = 0; updateHpUI(); setTimeout(showVictory, 600); }
 }
 
@@ -250,16 +243,13 @@ function spawnProjectile(x, y) {
     el.style.left = x + 'px';
     el.style.top  = y + 'px';
     document.body.appendChild(el);
-
     const targetY = window.innerHeight * 0.85;
-    el.style.transition = `top ${ATTACK_SPEED_MS}ms linear, opacity ${ATTACK_SPEED_MS}ms ease`;
+    el.style.transition = `top ${ATTACK_SPEED_MS}ms linear`;
     el.getBoundingClientRect();
     el.style.top = targetY + 'px';
-
     const proj = { el, x, startY: y, targetY,
                    startTime: Date.now(), duration: ATTACK_SPEED_MS, deflected: false };
     activeProjectiles.push(proj);
-
     proj.timer = setTimeout(() => {
         if (!proj.deflected && gameActive) playerTakeDamage(x, targetY);
         removeProjectile(proj);
@@ -436,13 +426,8 @@ async function getLeaderboardFirebase() {
     try {
         const snapshot = await get(LB_REF);
         if (!snapshot.exists()) return [];
-
         const entries = [];
-        snapshot.forEach(child => {
-            entries.push({ key: child.key, ...child.val() });
-        });
-
-        // Ordenar en el cliente y coger el top MAX_ENTRIES
+        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
         entries.sort((a, b) => b.puntos - a.puntos);
         return entries.slice(0, MAX_ENTRIES);
     } catch (err) {
@@ -451,35 +436,205 @@ async function getLeaderboardFirebase() {
     }
 }
 
-async function clearLeaderboard() {
-    if (!confirm('¿Borrar todo el ranking?')) return;
-    try {
-        await remove(LB_REF);
-        renderLeaderboard([], -1);
-    } catch (err) {
-        console.error('Firebase clearLeaderboard error:', err);
-    }
-}
-
-// Actualización en tiempo real — si otro jugador termina mientras
-// estás en la pantalla de resultado, el ranking se actualiza solo
 function subscribeLeaderboard(currentNombre, currentPuntos) {
     onValue(LB_REF, snapshot => {
         if (!snapshot.exists()) { renderLeaderboard([], -1); return; }
-
         const entries = [];
-        snapshot.forEach(child => {
-            entries.push({ key: child.key, ...child.val() });
-        });
-
+        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
         entries.sort((a, b) => b.puntos - a.puntos);
         const top = entries.slice(0, MAX_ENTRIES);
-
         const currentIndex = top.findIndex(
             e => e.nombre === currentNombre && e.puntos === currentPuntos
         );
         renderLeaderboard(top, currentIndex);
     });
+}
+
+// ══════════════════════════════════
+//  ADMIN — panel oculto
+// ══════════════════════════════════
+let adminUnsubscribe = null;
+
+function showAdminPanel() {
+    const existing = document.getElementById('admin-panel');
+    if (existing) { existing.remove(); return; }
+
+    const panel = document.createElement('div');
+    panel.id = 'admin-panel';
+    panel.style.cssText = `
+        position:fixed; inset:0; z-index:3000;
+        background:rgba(0,0,0,0.92);
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        gap:16px; padding:32px;
+        font-family:'Segoe UI',sans-serif;
+    `;
+
+    const currentUser = auth.currentUser;
+    const isAdmin = currentUser && !currentUser.isAnonymous;
+
+    if (!isAdmin) {
+        panel.innerHTML = `
+            <div style="color:#fff;font-size:22px;font-weight:900;letter-spacing:3px;margin-bottom:8px;">ADMIN</div>
+            <input id="admin-email" type="email" placeholder="Email admin"
+                style="padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);
+                background:rgba(255,255,255,0.08);color:#fff;font-size:14px;width:100%;max-width:300px;">
+            <input id="admin-pass" type="password" placeholder="Contraseña"
+                style="padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);
+                background:rgba(255,255,255,0.08);color:#fff;font-size:14px;width:100%;max-width:300px;">
+            <div id="admin-error" style="color:#ff4444;font-size:13px;display:none;"></div>
+            <button onclick="adminLogin()"
+                style="padding:12px 32px;background:linear-gradient(135deg,#00ff88,#00cc66);
+                color:#000;font-weight:800;font-size:14px;letter-spacing:2px;
+                border:none;border-radius:50px;cursor:pointer;width:100%;max-width:300px;">
+                ENTRAR
+            </button>
+            <button onclick="document.getElementById('admin-panel').remove()"
+                style="padding:10px 24px;background:rgba(255,255,255,0.07);
+                color:rgba(255,255,255,0.5);font-size:13px;letter-spacing:1px;
+                border:1px solid rgba(255,255,255,0.1);border-radius:50px;cursor:pointer;">
+                CANCELAR
+            </button>
+        `;
+    } else {
+        panel.innerHTML = `
+            <div style="color:#00ff88;font-size:22px;font-weight:900;letter-spacing:3px;margin-bottom:8px;">PANEL ADMIN</div>
+            <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:16px;">${currentUser.email}</div>
+            <div id="admin-lb-preview" style="width:100%;max-width:360px;max-height:300px;overflow-y:auto;
+                background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                <div style="color:rgba(255,255,255,0.3);text-align:center;font-size:13px;">Cargando...</div>
+            </div>
+            <button onclick="adminClearAll()"
+                style="padding:12px 32px;background:linear-gradient(135deg,#ff2020,#cc0000);
+                color:#fff;font-weight:800;font-size:14px;letter-spacing:2px;
+                border:none;border-radius:50px;cursor:pointer;width:100%;max-width:300px;">
+                🗑️ BORRAR TODO EL RANKING
+            </button>
+            <button onclick="adminLogout()"
+                style="padding:10px 24px;background:rgba(255,255,255,0.07);
+                color:rgba(255,255,255,0.5);font-size:13px;letter-spacing:1px;
+                border:1px solid rgba(255,255,255,0.1);border-radius:50px;cursor:pointer;">
+                CERRAR SESIÓN ADMIN
+            </button>
+            <button onclick="document.getElementById('admin-panel').remove()"
+                style="padding:10px 24px;background:transparent;
+                color:rgba(255,255,255,0.3);font-size:12px;
+                border:none;cursor:pointer;">
+                CERRAR
+            </button>
+        `;
+        loadAdminPreview();
+    }
+
+    document.body.appendChild(panel);
+}
+
+async function loadAdminPreview() {
+    const preview = document.getElementById('admin-lb-preview');
+    if (!preview) return;
+    const lb = await getLeaderboardFirebase();
+    if (lb.length === 0) {
+        preview.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;font-size:13px;">Ranking vacío</div>';
+        return;
+    }
+    const MEDALS = ['🥇','🥈','🥉'];
+    preview.innerHTML = lb.map((e, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+            padding:8px 4px;border-bottom:1px solid rgba(255,255,255,0.06);
+            color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(255,255,255,0.6)'};
+            font-family:'Segoe UI',sans-serif;font-size:13px;">
+            <span>${MEDALS[i]||''} ${i+1}. ${e.nombre}</span>
+            <span style="font-weight:700;">${e.puntos.toLocaleString('es-ES')}</span>
+        </div>
+    `).join('');
+}
+
+async function adminLogin() {
+    const email = document.getElementById('admin-email')?.value;
+    const pass  = document.getElementById('admin-pass')?.value;
+    const errEl = document.getElementById('admin-error');
+    if (!email || !pass) return;
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        document.getElementById('admin-panel')?.remove();
+        showAdminPanel(); // reabrir ya autenticado
+    } catch (err) {
+        if (errEl) {
+            errEl.style.display = 'block';
+            errEl.textContent = 'Email o contraseña incorrectos';
+        }
+    }
+}
+
+async function adminClearAll() {
+    if (!confirm('¿Seguro que quieres borrar TODO el ranking? Esta acción no se puede deshacer.')) return;
+    try {
+        await remove(LB_REF);
+        alert('Ranking borrado correctamente.');
+        document.getElementById('admin-panel')?.remove();
+    } catch (err) {
+        alert('Error al borrar: ' + err.message);
+    }
+}
+
+async function adminLogout() {
+    // Volver a sesión anónima
+    await signOut(auth);
+    await signInAnonymously(auth);
+    document.getElementById('admin-panel')?.remove();
+    alert('Sesión admin cerrada.');
+}
+
+// Botón admin oculto — toca 5 veces el título del overlay de inicio
+let adminTapCount = 0;
+let adminTapTimer = null;
+const overlayTitle = document.querySelector('.overlay-title');
+if (overlayTitle) {
+    overlayTitle.addEventListener('click', () => {
+        adminTapCount++;
+        clearTimeout(adminTapTimer);
+        if (adminTapCount >= 5) {
+            adminTapCount = 0;
+            showAdminPanel();
+        } else {
+            adminTapTimer = setTimeout(() => { adminTapCount = 0; }, 2000);
+        }
+    });
+}
+
+// Gesto secreto en pantalla de resultado — toca 5 veces el score
+const scoreValueEl = document.getElementById('result-score');
+if (scoreValueEl) {
+    let scoreTapCount = 0;
+    let scoreTapTimer = null;
+    scoreValueEl.addEventListener('click', () => {
+        scoreTapCount++;
+        clearTimeout(scoreTapTimer);
+        if (scoreTapCount >= 5) {
+            scoreTapCount = 0;
+            showAdminPanel();
+        } else {
+            scoreTapTimer = setTimeout(() => { scoreTapCount = 0; }, 2000);
+        }
+    });
+}
+
+// ══════════════════════════════════
+//  BORRAR RANKING (solo admin)
+// ══════════════════════════════════
+async function clearLeaderboard() {
+    const currentUser = auth.currentUser;
+    if (!currentUser || currentUser.isAnonymous) {
+        showAdminPanel();
+        return;
+    }
+    if (!confirm('¿Borrar todo el ranking?')) return;
+    try {
+        await remove(LB_REF);
+        renderLeaderboard([], -1);
+    } catch (err) {
+        alert('Sin permisos para borrar. Inicia sesión como admin.');
+    }
 }
 
 // ══════════════════════════════════
@@ -559,27 +714,18 @@ async function showResult(won) {
     }
 
     renderRewards(score, tiempoSegundos, maxCombo, damageTaken);
-
-    // Mostrar overlay con spinner en la tabla mientras carga Firebase
     resultOverlay.classList.add('visible');
     document.getElementById('cuerpotabla').innerHTML =
         `<tr><td colspan="3" class="lb-empty">Cargando ranking...</td></tr>`;
 
     if (won) {
-        // Guardar puntuación
         await addScoreFirebase(nombre, score);
-
-        // Comprobar si es récord (top 1)
         const lb = await getLeaderboardFirebase();
         if (lb.length > 0 && lb[0].nombre === nombre && lb[0].puntos === score) {
             scoreEl.classList.add('new-best');
             if (badge) badge.classList.add('visible');
         }
-
-        // Suscribir tiempo real — la tabla se actualiza sola
         subscribeLeaderboard(nombre, score);
-
-        // Partículas
         for (let i = 0; i < 12; i++) {
             setTimeout(() => spawnRipple(
                 Math.random() * window.innerWidth,
@@ -587,7 +733,6 @@ async function showResult(won) {
             ), i * 80);
         }
     } else {
-        // Derrota — solo mostrar ranking actual sin guardar
         const lb = await getLeaderboardFirebase();
         renderLeaderboard(lb, -1);
     }
@@ -610,11 +755,12 @@ function shareScore() {
 
 // ══════════════════════════════════
 //  EXPONER AL SCOPE GLOBAL
-//  Los módulos ES son privados por defecto —
-//  los onclick del HTML necesitan estas funciones
-//  en window para poder llamarlas.
 // ══════════════════════════════════
 window.startGame        = startGame;
 window.restartGame      = restartGame;
 window.clearLeaderboard = clearLeaderboard;
 window.shareScore       = shareScore;
+window.adminLogin       = adminLogin;
+window.adminClearAll    = adminClearAll;
+window.adminLogout      = adminLogout;
+window.showAdminPanel   = showAdminPanel;
