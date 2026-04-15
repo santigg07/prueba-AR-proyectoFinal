@@ -437,6 +437,8 @@ async function getLeaderboardFirebase() {
 }
 
 function subscribeLeaderboard(currentNombre, currentPuntos) {
+    // onValue se dispara inmediatamente con el estado actual
+    // Y luego con cada cambio futuro — cubre carga inicial + tiempo real
     onValue(LB_REF, snapshot => {
         if (!snapshot.exists()) { renderLeaderboard([], -1); return; }
         const entries = [];
@@ -447,6 +449,7 @@ function subscribeLeaderboard(currentNombre, currentPuntos) {
             e => e.nombre === currentNombre && e.puntos === currentPuntos
         );
         renderLeaderboard(top, currentIndex);
+        updateBorrarBtn();
     });
 }
 
@@ -603,11 +606,11 @@ if (overlayTitle) {
 }
 
 // Gesto secreto en pantalla de resultado — toca 5 veces el score
-const scoreValueEl = document.getElementById('result-score');
-if (scoreValueEl) {
-    let scoreTapCount = 0;
-    let scoreTapTimer = null;
-    scoreValueEl.addEventListener('click', () => {
+// Se registra cada vez que se muestra el resultado (el elemento existe siempre)
+let scoreTapCount = 0;
+let scoreTapTimer = null;
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'result-score') {
         scoreTapCount++;
         clearTimeout(scoreTapTimer);
         if (scoreTapCount >= 5) {
@@ -616,8 +619,22 @@ if (scoreValueEl) {
         } else {
             scoreTapTimer = setTimeout(() => { scoreTapCount = 0; }, 2000);
         }
-    });
+    }
+});
+
+// ══════════════════════════════════
+//  BOTÓN BORRAR — visible solo para admin
+// ══════════════════════════════════
+function updateBorrarBtn() {
+    const lbClear = document.querySelector('.lb-clear');
+    if (!lbClear) return;
+    const currentUser = auth.currentUser;
+    const isAdmin = currentUser && !currentUser.isAnonymous;
+    lbClear.style.display = isAdmin ? 'block' : 'none';
 }
+
+// Escuchar cambios de sesión para actualizar el botón en tiempo real
+auth.onAuthStateChanged(() => updateBorrarBtn());
 
 // ══════════════════════════════════
 //  BORRAR RANKING (solo admin)
@@ -720,12 +737,18 @@ async function showResult(won) {
 
     if (won) {
         await addScoreFirebase(nombre, score);
-        const lb = await getLeaderboardFirebase();
-        if (lb.length > 0 && lb[0].nombre === nombre && lb[0].puntos === score) {
-            scoreEl.classList.add('new-best');
-            if (badge) badge.classList.add('visible');
-        }
+        // subscribeLeaderboard lee inmediatamente con onValue y detecta
+        // si la entrada actual es la mejor para mostrar el nuevo record
         subscribeLeaderboard(nombre, score);
+        // Comprobar nuevo record tras un pequeño delay para que Firebase
+        // haya procesado el push
+        setTimeout(async () => {
+            const lb = await getLeaderboardFirebase();
+            if (lb.length > 0 && lb[0].nombre === nombre && lb[0].puntos === score) {
+                scoreEl.classList.add('new-best');
+                if (badge) badge.classList.add('visible');
+            }
+        }, 800);
         for (let i = 0; i < 12; i++) {
             setTimeout(() => spawnRipple(
                 Math.random() * window.innerWidth,
@@ -735,6 +758,7 @@ async function showResult(won) {
     } else {
         const lb = await getLeaderboardFirebase();
         renderLeaderboard(lb, -1);
+        updateBorrarBtn();
     }
 }
 
