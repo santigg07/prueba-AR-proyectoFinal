@@ -85,6 +85,7 @@ const multiplierDisplay = document.getElementById('multiplier-display');
 //  START / RESTART
 // ══════════════════════════════════
 function startGame() {
+    cancelLeaderboardListener();
     overlay.classList.add('hidden');
     gameActive   = true;
     bossHP       = BOSS_MAX_HP;
@@ -112,6 +113,13 @@ function stopGame() {
     attackInterval = null;
     clearProjectiles();
     if (comboTimer) clearTimeout(comboTimer);
+}
+
+function cancelLeaderboardListener() {
+    if (_lbUnsubscribe) {
+        _lbUnsubscribe();
+        _lbUnsubscribe = null;
+    }
 }
 
 // ══════════════════════════════════
@@ -436,18 +444,34 @@ async function getLeaderboardFirebase() {
     }
 }
 
+// Guardar la función de cancelación para evitar listeners duplicados
+let _lbUnsubscribe = null;
+
 function subscribeLeaderboard(currentNombre, currentPuntos) {
-    // onValue se dispara inmediatamente con el estado actual
-    // Y luego con cada cambio futuro — cubre carga inicial + tiempo real
-    onValue(LB_REF, snapshot => {
+    // Cancelar listener anterior si existe (evita duplicados al rejugar)
+    if (_lbUnsubscribe) {
+        _lbUnsubscribe();
+        _lbUnsubscribe = null;
+    }
+
+    _lbUnsubscribe = onValue(LB_REF, snapshot => {
         if (!snapshot.exists()) { renderLeaderboard([], -1); return; }
         const entries = [];
         snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
         entries.sort((a, b) => b.puntos - a.puntos);
         const top = entries.slice(0, MAX_ENTRIES);
-        const currentIndex = top.findIndex(
-            e => e.nombre === currentNombre && e.puntos === currentPuntos
-        );
+
+        // Buscar la entrada actual — puede haber varias con mismo nombre,
+        // usar la que coincida con nombre Y puntos exactos (última añadida)
+        let currentIndex = -1;
+        for (let i = top.length - 1; i >= 0; i--) {
+            if (top[i].nombre === currentNombre && top[i].puntos === currentPuntos) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        console.log('[LB] entradas recibidas:', entries.length, '| top:', top.length, '| currentIndex:', currentIndex);
         renderLeaderboard(top, currentIndex);
         updateBorrarBtn();
     });
