@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Spores and Dreams</title>
+  <title>Tap-Tap Boss Fight AR</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <link rel="stylesheet" href="asset/css/style.css">
@@ -15,41 +15,47 @@
      HUD
 ════════════════════════════════ -->
 <div id="hud">
-  <div id="top-bar">
-    <!-- Boss HP -->
-    <div id="hp-container">
-      <div id="hp-label">BOSS HP</div>
-      <div id="hp-bar-bg">
-        <div id="hp-bar"></div>
+  <!-- Score + Combo centrado -->
+  <div id="score-row">
+    <div id="score-label">Score</div>
+    <div id="score-display">0</div>
+    <div id="combo-display">x1</div>
+  </div>
+
+  <!-- Barras de vida lado a lado -->
+  <div id="bars-row">
+    <div class="bar-group bar-player">
+      <div class="bar-header">
+        <div class="bar-label" id="player-hp-label">Tu vida</div>
+        <div class="bar-count" id="player-hp-count">5/5</div>
+      </div>
+      <div class="bar-bg">
+        <div class="bar-fill" id="player-hp-bar"></div>
       </div>
     </div>
 
-    <!-- Score + Combo -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <div id="combo-display" style="opacity:0;font-size:28px;font-weight:900;color:#ff8800;text-shadow:0 0 12px #ff4400;transition:opacity 0.2s;line-height:1;">x1</div>
-      <div id="multiplier-display" style="opacity:0;font-size:10px;font-weight:700;letter-spacing:2px;color:#ff8800;transition:opacity 0.2s;">×1 PTS</div>
-    </div>
+    <div class="bar-separator"></div>
 
-    <!-- Score -->
-    <div>
-      <div id="score-label">SCORE</div>
-      <div id="score-display">0</div>
+    <div class="bar-group bar-boss">
+      <div class="bar-header">
+        <div class="bar-label" id="hp-label">Boss</div>
+        <div class="bar-count" id="boss-hp-count">20/20</div>
+      </div>
+      <div class="bar-bg">
+        <div class="bar-fill" id="hp-bar"></div>
+      </div>
     </div>
   </div>
 
-  <!-- Player HP -->
-  <div id="player-hp-row">
-    <div id="player-hp-label">TU VIDA</div>
-    <div id="player-hp-bg">
-      <div id="player-hp-bar"></div>
-    </div>
-  </div>
+  <div id="hud-divider"></div>
 </div>
+
+<div id="multiplier-display">×1 PTS</div>
 
 <!-- Scan prompt -->
 <div id="scan-prompt">
-  <span class="scan-icon">⟳</span>
-  Apunta el marcador Hiro para invocar al boss
+  <span class="scan-dot"></span>
+  Apunta al marcador
 </div>
 
 <!-- Start overlay -->
@@ -66,13 +72,11 @@
       <div class="overlay-title">Dreams</div>
     </div>
 
-    <!--<div class="overlay-boss-label">BOSS</div>-->
+    <div class="overlay-boss-label">BOSS</div>
 
     <div class="overlay-sub">Escanea el marcador<br>Derrota al enemigo</div>
 
     <button class="btn-start" onclick="startGame()">EMPEZAR</button>
-
-
 
     <div class="overlay-line-bottom"></div>
   </div>
