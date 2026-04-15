@@ -430,17 +430,32 @@ async function addScoreFirebase(nombre, puntos) {
     }
 }
 
+const FB_REST_URL = 'https://of-spores-and-dreams-default-rtdb.europe-west1.firebasedatabase.app/leaderboard.json';
+
 async function getLeaderboardFirebase() {
     try {
-        const snapshot = await get(LB_REF);
-        if (!snapshot.exists()) return [];
-        const entries = [];
-        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
+        // Usar REST API — el SDK onValue/get devuelve datos parciales (bug caché)
+        const resp = await fetch(FB_REST_URL);
+        const data = await resp.json();
+        if (!data) return [];
+        const entries = Object.entries(data).map(([key, val]) => ({ key, ...val }));
         entries.sort((a, b) => b.puntos - a.puntos);
+        console.log('[LB REST] entradas totales:', entries.length);
         return entries.slice(0, MAX_ENTRIES);
     } catch (err) {
-        console.error('Firebase getLeaderboard error:', err);
-        return [];
+        console.error('Firebase getLeaderboard REST error:', err);
+        // Fallback al SDK si REST falla
+        try {
+            const snapshot = await get(LB_REF);
+            if (!snapshot.exists()) return [];
+            const entries = [];
+            snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
+            entries.sort((a, b) => b.puntos - a.puntos);
+            return entries.slice(0, MAX_ENTRIES);
+        } catch (e2) {
+            console.error('Firebase getLeaderboard SDK fallback error:', e2);
+            return [];
+        }
     }
 }
 
@@ -448,33 +463,51 @@ async function getLeaderboardFirebase() {
 let _lbUnsubscribe = null;
 
 function subscribeLeaderboard(currentNombre, currentPuntos) {
-    // Cancelar listener anterior si existe (evita duplicados al rejugar)
+    // Cancelar listener/polling anterior si existe
     if (_lbUnsubscribe) {
         _lbUnsubscribe();
         _lbUnsubscribe = null;
     }
 
-    _lbUnsubscribe = onValue(LB_REF, snapshot => {
-        if (!snapshot.exists()) { renderLeaderboard([], -1); return; }
-        const entries = [];
-        snapshot.forEach(child => entries.push({ key: child.key, ...child.val() }));
-        entries.sort((a, b) => b.puntos - a.puntos);
-        const top = entries.slice(0, MAX_ENTRIES);
+    // Usar REST polling en vez de onValue (el SDK devuelve datos parciales por caché)
+    let active = true;
 
-        // Buscar la entrada actual — puede haber varias con mismo nombre,
-        // usar la que coincida con nombre Y puntos exactos (última añadida)
-        let currentIndex = -1;
-        for (let i = top.length - 1; i >= 0; i--) {
-            if (top[i].nombre === currentNombre && top[i].puntos === currentPuntos) {
-                currentIndex = i;
-                break;
+    async function pollLeaderboard() {
+        if (!active) return;
+        try {
+            const resp = await fetch(FB_REST_URL);
+            const data = await resp.json();
+            if (!data) { renderLeaderboard([], -1); return; }
+            const entries = Object.entries(data).map(([key, val]) => ({ key, ...val }));
+            entries.sort((a, b) => b.puntos - a.puntos);
+            const top = entries.slice(0, MAX_ENTRIES);
+
+            let currentIndex = -1;
+            for (let i = top.length - 1; i >= 0; i--) {
+                if (top[i].nombre === currentNombre && top[i].puntos === currentPuntos) {
+                    currentIndex = i;
+                    break;
+                }
             }
-        }
 
-        console.log('[LB] entradas recibidas:', entries.length, '| top:', top.length, '| currentIndex:', currentIndex);
-        renderLeaderboard(top, currentIndex);
-        updateBorrarBtn();
-    });
+            console.log('[LB POLL] entradas recibidas:', entries.length, '| top:', top.length, '| currentIndex:', currentIndex);
+            renderLeaderboard(top, currentIndex);
+            updateBorrarBtn();
+        } catch (err) {
+            console.error('[LB POLL] error:', err);
+        }
+    }
+
+    // Primera carga inmediata
+    pollLeaderboard();
+
+    // Polling cada 5s para captar cambios de otros jugadores
+    const intervalId = setInterval(pollLeaderboard, 5000);
+
+    _lbUnsubscribe = () => {
+        active = false;
+        clearInterval(intervalId);
+    };
 }
 
 // ══════════════════════════════════
@@ -761,7 +794,7 @@ async function showResult(won) {
 
     if (won) {
         await addScoreFirebase(nombre, score);
-        // subscribeLeaderboard lee inmediatamente con onValue y detecta
+        // subscribeLeaderboard hace polling REST y detecta
         // si la entrada actual es la mejor para mostrar el nuevo record
         subscribeLeaderboard(nombre, score);
         // Comprobar nuevo record tras un pequeño delay para que Firebase
