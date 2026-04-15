@@ -80,6 +80,8 @@ const resultOverlay     = document.getElementById('result-overlay');
 const playerHpBar       = document.getElementById('player-hp-bar');
 const comboDisplay      = document.getElementById('combo-display');
 const multiplierDisplay = document.getElementById('multiplier-display');
+const bossHpCount       = document.getElementById('boss-hp-count');
+const playerHpCount     = document.getElementById('player-hp-count');
 
 // ══════════════════════════════════
 //  START / RESTART
@@ -320,9 +322,10 @@ function clearProjectiles() {
 function updateHpUI() {
     const pct = Math.max(0, bossHP / BOSS_MAX_HP);
     hpBar.style.width = (pct * 100) + '%';
-    if (pct > 0.6)      hpBar.style.background = 'linear-gradient(90deg, #ff2020, #ff6b00)';
-    else if (pct > 0.3) hpBar.style.background = 'linear-gradient(90deg, #ff6b00, #ffcc00)';
-    else                hpBar.style.background = 'linear-gradient(90deg, #ffcc00, #ffff00)';
+    if (pct > 0.5)       hpBar.style.background = 'linear-gradient(90deg, rgba(255,120,0,0.6), rgba(255,60,60,0.7))';
+    else if (pct > 0.25) hpBar.style.background = 'linear-gradient(90deg, rgba(255,180,0,0.6), rgba(255,120,0,0.7))';
+    else                 hpBar.style.background = 'linear-gradient(90deg, rgba(255,220,0,0.7), rgba(255,180,0,0.6))';
+    if (bossHpCount) bossHpCount.textContent = `${bossHP}/${BOSS_MAX_HP}`;
     if (hpBar3D) {
         hpBar3D.setAttribute('width', (0.8 * pct).toFixed(3));
         hpBar3D.setAttribute('position', `${(-0.4 * (1 - pct)).toFixed(3)} 0 0.005`);
@@ -334,14 +337,15 @@ function updatePlayerHpUI() {
     const pct = playerHP / PLAYER_MAX_HP;
     playerHpBar.style.width = (pct * 100) + '%';
     playerHpBar.style.background = pct > 0.5
-        ? 'linear-gradient(90deg, #00cc66, #00ff88)'
+        ? 'rgba(0,255,136,0.6)'
         : pct > 0.25
-            ? 'linear-gradient(90deg, #ffaa00, #ffdd00)'
-            : 'linear-gradient(90deg, #ff2020, #ff6b00)';
+            ? 'rgba(255,170,0,0.6)'
+            : 'rgba(255,60,60,0.65)';
+    if (playerHpCount) playerHpCount.textContent = `${playerHP}/${PLAYER_MAX_HP}`;
 }
 
 function updateScoreUI() {
-    scoreDisplay.textContent = score.toLocaleString();
+    scoreDisplay.textContent = score.toLocaleString('es-ES');
 }
 
 function updateComboUI() {
