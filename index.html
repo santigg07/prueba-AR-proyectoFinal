@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Tap-Tap Boss Fight AR</title>
+  <title>Spores and Dreams</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <link rel="stylesheet" href="asset/css/style.css">
@@ -21,6 +21,9 @@
     <div id="score-display">0</div>
     <div id="combo-display">x1</div>
   </div>
+
+  <!-- Multiplier debajo del score -->
+  <div id="multiplier-display">×1 PTS</div>
 
   <!-- Barras de vida lado a lado -->
   <div id="bars-row">
@@ -49,8 +52,6 @@
 
   <div id="hud-divider"></div>
 </div>
-
-<div id="multiplier-display">×1 PTS</div>
 
 <!-- Scan prompt -->
 <div id="scan-prompt">

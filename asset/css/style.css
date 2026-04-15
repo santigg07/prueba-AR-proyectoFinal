@@ -16,8 +16,8 @@ body {
     top: 0; left: 0; right: 0;
     z-index: 999;
     pointer-events: none;
-    padding: 14px 18px 10px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+    padding: 14px 18px 12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.65) 80%, transparent 100%);
 }
 
 /* ── Score row ── */
@@ -26,13 +26,13 @@ body {
     justify-content: center;
     align-items: baseline;
     gap: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
 }
 
 #score-label {
     font-size: 8px;
     letter-spacing: 3px;
-    color: rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.45);
     text-transform: uppercase;
 }
 
@@ -42,7 +42,7 @@ body {
     color: #fff;
     letter-spacing: 3px;
     line-height: 1;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.6);
 }
 
 #combo-display {
@@ -55,18 +55,15 @@ body {
 }
 
 #multiplier-display {
-    position: fixed;
-    top: 52px;
-    left: 50%;
-    transform: translateX(-50%);
+    text-align: center;
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 2px;
     color: rgba(255,140,0,0.55);
     opacity: 0;
     transition: opacity 0.2s;
-    z-index: 999;
-    pointer-events: none;
+    margin-bottom: 6px;
+    height: 14px;
 }
 
 /* ── Bars row ── */
@@ -96,15 +93,15 @@ body {
     text-transform: uppercase;
 }
 
-.bar-player .bar-label { color: rgba(0,255,136,0.5); }
-.bar-boss .bar-label   { color: rgba(255,80,80,0.5); }
+.bar-player .bar-label { color: rgba(0,255,136,0.65); }
+.bar-boss .bar-label   { color: rgba(255,80,80,0.65); }
 
 .bar-count {
     font-size: 8px;
 }
 
-.bar-player .bar-count { color: rgba(0,255,136,0.4); }
-.bar-boss .bar-count   { color: rgba(255,80,80,0.4); }
+.bar-player .bar-count { color: rgba(0,255,136,0.7); }
+.bar-boss .bar-count   { color: rgba(255,80,80,0.7); }
 
 .bar-separator {
     width: 1px;

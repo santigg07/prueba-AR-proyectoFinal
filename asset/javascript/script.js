@@ -325,7 +325,11 @@ function updateHpUI() {
     if (pct > 0.5)       hpBar.style.background = 'linear-gradient(90deg, rgba(255,120,0,0.6), rgba(255,60,60,0.7))';
     else if (pct > 0.25) hpBar.style.background = 'linear-gradient(90deg, rgba(255,180,0,0.6), rgba(255,120,0,0.7))';
     else                 hpBar.style.background = 'linear-gradient(90deg, rgba(255,220,0,0.7), rgba(255,180,0,0.6))';
-    if (bossHpCount) bossHpCount.textContent = `${bossHP}/${BOSS_MAX_HP}`;
+    if (bossHpCount) {
+        bossHpCount.textContent = `${bossHP}/${BOSS_MAX_HP}`;
+    } else {
+        console.warn('[HUD] bossHpCount no encontrado');
+    }
     if (hpBar3D) {
         hpBar3D.setAttribute('width', (0.8 * pct).toFixed(3));
         hpBar3D.setAttribute('position', `${(-0.4 * (1 - pct)).toFixed(3)} 0 0.005`);
@@ -341,7 +345,11 @@ function updatePlayerHpUI() {
         : pct > 0.25
             ? 'rgba(255,170,0,0.6)'
             : 'rgba(255,60,60,0.65)';
-    if (playerHpCount) playerHpCount.textContent = `${playerHP}/${PLAYER_MAX_HP}`;
+    if (playerHpCount) {
+        playerHpCount.textContent = `${playerHP}/${PLAYER_MAX_HP}`;
+    } else {
+        console.warn('[HUD] playerHpCount no encontrado');
+    }
 }
 
 function updateScoreUI() {
