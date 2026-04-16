@@ -8,15 +8,40 @@ body{
 }
 
 .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    max-width: 400px;
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 400px;
+  width: 100%;
 }
 
 .btn {
-    /*añadir el estilo a los botones
-    */
+    display: block;
+    background: transparent;
+    color:#00ff88 ;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    width: 100%;
+    padding: 14px 24px;
+    margin: 10px;
+    border-radius: 50px;
+    border: none;
+    text-decoration: none;
+    text-align: center;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+
+}
+
+.btn{
+    transition: all 0.3s ease;
+}
+
+.btn:hover{
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.8);
+    transform: translateY(-2px);
+}
+
+.btn:active{
+    transform: scale(0.97);
 }
