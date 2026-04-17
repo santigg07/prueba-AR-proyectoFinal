@@ -862,24 +862,45 @@ window.showAdminPanel   = showAdminPanel;
 //  DEBUG MindAR — eliminar tras Fase 2
 // ══════════════════════════════════
 const _debugMarker = document.getElementById('boss-marker');
+const _debugScene  = document.querySelector('a-scene');
+
 if (_debugMarker) {
     _debugMarker.addEventListener('targetFound', () => {
-        console.log('[MindAR] ✅ targetFound — imagen detectada');
+        console.log('[MindAR] ✅ targetFound');
     });
     _debugMarker.addEventListener('targetLost', () => {
-        console.log('[MindAR] ❌ targetLost — imagen perdida');
+        console.log('[MindAR] ❌ targetLost');
     });
 } else {
-    console.warn('[MindAR] No se encontró #boss-marker en el DOM');
+    console.warn('[MindAR] No se encontró #boss-marker');
 }
 
-// Log cuando MindAR esté listo
-document.querySelector('a-scene').addEventListener('loaded', () => {
+_debugScene.addEventListener('loaded', () => {
     console.log('[MindAR] a-scene loaded');
 });
-document.querySelector('a-scene').addEventListener('arReady', () => {
-    console.log('[MindAR] arReady — sistema listo');
+_debugScene.addEventListener('renderstart', () => {
+    console.log('[MindAR] renderstart');
 });
-document.querySelector('a-scene').addEventListener('arError', (e) => {
-    console.error('[MindAR] arError:', e);
+_debugScene.addEventListener('arReady', () => {
+    console.log('[MindAR] ✅ arReady — sistema de tracking activo');
 });
+_debugScene.addEventListener('arError', (e) => {
+    console.error('[MindAR] ❌ arError:', e.detail);
+});
+
+// Verificar si el atributo mindar-image está presente y cargado
+setTimeout(() => {
+    const scene = document.querySelector('a-scene');
+    const mindarAttr = scene.getAttribute('mindar-image');
+    console.log('[MindAR] atributo mindar-image:', mindarAttr);
+    console.log('[MindAR] sistema mindar-image-system:', scene.systems['mindar-image-system']);
+}, 3000);
+
+// Verificar que el .mind se puede cargar
+fetch('asset/targets/targets.mind')
+    .then(r => {
+        console.log('[MindAR] fetch targets.mind →', r.status, r.statusText);
+        return r.blob();
+    })
+    .then(b => console.log('[MindAR] targets.mind tamaño:', b.size, 'bytes'))
+    .catch(e => console.error('[MindAR] ❌ no se pudo cargar targets.mind:', e));
