@@ -857,3 +857,29 @@ window.adminLogin       = adminLogin;
 window.adminClearAll    = adminClearAll;
 window.adminLogout      = adminLogout;
 window.showAdminPanel   = showAdminPanel;
+
+// ══════════════════════════════════
+//  DEBUG MindAR — eliminar tras Fase 2
+// ══════════════════════════════════
+const _debugMarker = document.getElementById('boss-marker');
+if (_debugMarker) {
+    _debugMarker.addEventListener('targetFound', () => {
+        console.log('[MindAR] ✅ targetFound — imagen detectada');
+    });
+    _debugMarker.addEventListener('targetLost', () => {
+        console.log('[MindAR] ❌ targetLost — imagen perdida');
+    });
+} else {
+    console.warn('[MindAR] No se encontró #boss-marker en el DOM');
+}
+
+// Log cuando MindAR esté listo
+document.querySelector('a-scene').addEventListener('loaded', () => {
+    console.log('[MindAR] a-scene loaded');
+});
+document.querySelector('a-scene').addEventListener('arReady', () => {
+    console.log('[MindAR] arReady — sistema listo');
+});
+document.querySelector('a-scene').addEventListener('arError', (e) => {
+    console.error('[MindAR] arError:', e);
+});
