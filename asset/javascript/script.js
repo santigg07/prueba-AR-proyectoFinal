@@ -125,17 +125,17 @@ function cancelLeaderboardListener() {
 }
 
 // ══════════════════════════════════
-//  MARKER EVENTS (AR.js)
+//  MARKER EVENTS (MindAR)
 // ══════════════════════════════════
 const marker = document.getElementById('boss-marker');
-if (marker && marker.hasAttribute('preset')) {
-    marker.addEventListener('markerFound', () => {
+if (marker) {
+    marker.addEventListener('targetFound', () => {
         markerVisible = true;
         scanPrompt.style.display = 'none';
         const tapHint = document.getElementById('tap-hint');
         if (tapHint) tapHint.setAttribute('visible', true);
     });
-    marker.addEventListener('markerLost', () => {
+    marker.addEventListener('targetLost', () => {
         markerVisible = false;
         scanPrompt.style.display = 'flex';
     });
@@ -858,49 +858,8 @@ window.adminClearAll    = adminClearAll;
 window.adminLogout      = adminLogout;
 window.showAdminPanel   = showAdminPanel;
 
-// ══════════════════════════════════
-//  DEBUG MindAR — eliminar tras Fase 2
-// ══════════════════════════════════
-const _debugMarker = document.getElementById('boss-marker');
-const _debugScene  = document.querySelector('a-scene');
-
-if (_debugMarker) {
-    _debugMarker.addEventListener('targetFound', () => {
-        console.log('[MindAR] ✅ targetFound');
-    });
-    _debugMarker.addEventListener('targetLost', () => {
-        console.log('[MindAR] ❌ targetLost');
-    });
-} else {
-    console.warn('[MindAR] No se encontró #boss-marker');
+// Log mínimo de tracking (opcional, para ver estabilidad)
+if (marker) {
+    marker.addEventListener('targetFound', () => console.log('[MindAR] 🎯 tracking on'));
+    marker.addEventListener('targetLost',  () => console.log('[MindAR] 🔍 tracking off'));
 }
-
-_debugScene.addEventListener('loaded', () => {
-    console.log('[MindAR] a-scene loaded');
-});
-_debugScene.addEventListener('renderstart', () => {
-    console.log('[MindAR] renderstart');
-});
-_debugScene.addEventListener('arReady', () => {
-    console.log('[MindAR] ✅ arReady — sistema de tracking activo');
-});
-_debugScene.addEventListener('arError', (e) => {
-    console.error('[MindAR] ❌ arError:', e.detail);
-});
-
-// Verificar si el atributo mindar-image está presente y cargado
-setTimeout(() => {
-    const scene = document.querySelector('a-scene');
-    const mindarAttr = scene.getAttribute('mindar-image');
-    console.log('[MindAR] atributo mindar-image:', mindarAttr);
-    console.log('[MindAR] sistema mindar-image-system:', scene.systems['mindar-image-system']);
-}, 3000);
-
-// Verificar que el .mind se puede cargar
-fetch('asset/targets/targets.mind')
-    .then(r => {
-        console.log('[MindAR] fetch targets.mind →', r.status, r.statusText);
-        return r.blob();
-    })
-    .then(b => console.log('[MindAR] targets.mind tamaño:', b.size, 'bytes'))
-    .catch(e => console.error('[MindAR] ❌ no se pudo cargar targets.mind:', e));
