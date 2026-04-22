@@ -39,6 +39,13 @@ const ATTACK_SPEED_MS    = 1800;
 const COMBO_RESET_MS     = 1500;
 
 // ══════════════════════════════════
+//  DEBUG FASE 2 — eliminar tras arreglar
+// ══════════════════════════════════
+window.addEventListener('error', (e) => {
+    console.error('[ERROR GLOBAL]', e.message, 'en', e.filename, ':', e.lineno);
+});
+
+// ══════════════════════════════════
 //  RECOMPENSAS
 // ══════════════════════════════════
 const REWARDS = [
@@ -87,9 +94,11 @@ const playerHpCount     = document.getElementById('player-hp-count');
 //  START / RESTART
 // ══════════════════════════════════
 function startGame() {
+    console.log('[GAME] startGame() llamado'); //quitar despues
     cancelLeaderboardListener();
     overlay.classList.add('hidden');
     gameActive   = true;
+    console.log('[GAME] gameActive =', gameActive, '| markerVisible =', markerVisible); //quitar despues
     bossHP       = BOSS_MAX_HP;
     playerHP     = PLAYER_MAX_HP;
     score        = 0;
@@ -105,6 +114,7 @@ function startGame() {
     resultOverlay.classList.remove('visible');
     clearProjectiles();
     attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
+    console.log('[GAME] attackInterval creado:', attackInterval); //quitar despues
 }
 
 function restartGame() { startGame(); }
@@ -184,8 +194,9 @@ document.addEventListener('mousedown',  handleTap);
 
 function handleTap(e) {
     if (e.target.tagName === 'BUTTON') return;
-    if (!gameActive)    return;
-    if (!markerVisible) return;
+    console.log('[TAP] gameActive:', gameActive, '| markerVisible:', markerVisible, '| target:', e.target.tagName); //quitar depsues
+    if (!gameActive)  { console.log('[TAP] bloqueado: juego inactivo');  return; } //quitar el log despues
+    if (!markerVisible) { console.log('[TAP] bloqueado: marcador no visible'); return; } // quitar el log despues
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
     if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
@@ -241,6 +252,7 @@ function getMultiplier() {
 //  ATAQUES DEL BOSS
 // ══════════════════════════════════
 function bossAttack() {
+     console.log('[BOSS] bossAttack tick | gameActive:', gameActive, '| markerVisible:', markerVisible); //quitar despues
     if (!gameActive || !markerVisible) return;
     const startX = window.innerWidth  * (0.2 + Math.random() * 0.6);
     const startY = window.innerHeight * 0.25;
