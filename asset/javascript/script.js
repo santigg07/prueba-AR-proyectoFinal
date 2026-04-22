@@ -223,7 +223,12 @@ function handleTap(e) {
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
     if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
-    console.log('[HIT] tap:', Math.round(x), Math.round(y), '| rect:', rect);// quitar y cambiar despues
+    try {
+        const _hitRect = getBossScreenRect();
+        console.log('[HIT] tap:', Math.round(x), Math.round(y), '| rect:', _hitRect);
+    } catch (err) {
+        console.warn('[HIT] no se pudo obtener rect:', err);
+    }
     if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
     e.preventDefault();
     dealDamage(x, y);
