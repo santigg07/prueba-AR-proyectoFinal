@@ -94,11 +94,9 @@ const playerHpCount     = document.getElementById('player-hp-count');
 //  START / RESTART
 // ══════════════════════════════════
 function startGame() {
-    console.log('[GAME] startGame() llamado'); //quitar despues
     cancelLeaderboardListener();
     overlay.classList.add('hidden');
     gameActive   = true;
-    console.log('[GAME] gameActive =', gameActive, '| markerVisible =', markerVisible); //quitar despues
     bossHP       = BOSS_MAX_HP;
     playerHP     = PLAYER_MAX_HP;
     score        = 0;
@@ -114,7 +112,6 @@ function startGame() {
     resultOverlay.classList.remove('visible');
     clearProjectiles();
     attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
-    console.log('[GAME] attackInterval creado:', attackInterval); //quitar despues
 }
 
 function restartGame() { startGame(); }
@@ -160,23 +157,49 @@ function getBossScreenRect() {
     const scene  = document.querySelector('a-scene');
     const camera = scene && scene.camera;
     if (!camera) return null;
-    const worldPos = new THREE.Vector3();
-    sprite.object3D.getWorldPosition(worldPos);
-    const projected = worldPos.clone().project(camera);
-    if (projected.z > 1) return null;
+
+    // Obtener la caja 3D del sprite en coordenadas mundo
+    const box = new THREE.Box3().setFromObject(sprite.object3D);
+    if (box.isEmpty()) return null;
+
+    // Proyectar las 8 esquinas de la caja a pantalla y tomar min/max
+    const corners = [
+        new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+    ];
+
     const sw = window.innerWidth;
     const sh = window.innerHeight;
-    const cx = ( projected.x * 0.5 + 0.5) * sw;
-    const cy = (-projected.y * 0.5 + 0.5) * sh;
-    const refPos = worldPos.clone();
-    refPos.x += 0.6;
-    const projectedRef = refPos.clone().project(camera);
-    const refCx  = (projectedRef.x * 0.5 + 0.5) * sw;
-    const halfW  = Math.abs(refCx - cx);
-    const halfH  = halfW * (1.4 / 1.2);
-    const margin = 20;
-    return { x: cx - halfW - margin, y: cy - halfH - margin,
-             w: (halfW + margin) * 2,  h: (halfH + margin) * 2 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let anyInFront = false;
+
+    for (const c of corners) {
+        const p = c.clone().project(camera);
+        if (p.z <= 1) anyInFront = true;
+        const sx = ( p.x * 0.5 + 0.5) * sw;
+        const sy = (-p.y * 0.5 + 0.5) * sh;
+        if (sx < minX) minX = sx;
+        if (sy < minY) minY = sy;
+        if (sx > maxX) maxX = sx;
+        if (sy > maxY) maxY = sy;
+    }
+
+    if (!anyInFront) return null;
+
+    // Margen generoso para que sea fácil acertar
+    const margin = 30;
+    return {
+        x: minX - margin,
+        y: minY - margin,
+        w: (maxX - minX) + margin * 2,
+        h: (maxY - minY) + margin * 2
+    };
 }
 
 function isTapOnBoss(tapX, tapY) {
@@ -200,6 +223,7 @@ function handleTap(e) {
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
     if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
+    console.log('[HIT] tap:', Math.round(x), Math.round(y), '| rect:', rect);// quitar y cambiar despues
     if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
     e.preventDefault();
     dealDamage(x, y);
@@ -252,7 +276,6 @@ function getMultiplier() {
 //  ATAQUES DEL BOSS
 // ══════════════════════════════════
 function bossAttack() {
-     console.log('[BOSS] bossAttack tick | gameActive:', gameActive, '| markerVisible:', markerVisible); //quitar despues
     if (!gameActive || !markerVisible) return;
     const startX = window.innerWidth  * (0.2 + Math.random() * 0.6);
     const startY = window.innerHeight * 0.25;
@@ -431,11 +454,19 @@ function screenFlash() {
 function flashBoss() {
     const sprite = document.getElementById('boss-sprite');
     if (!sprite) return;
+    // Coordenadas actuales del boss en MindAR
+    const basePos = sprite.getAttribute('position');
+    const baseX   = basePos.x;
+    const baseY   = basePos.y;
+    const baseZ   = basePos.z;
+    const shake   = 0.04;
+
     sprite.setAttribute('animation__shake',
-        'property: position; from: -0.18 0.5 -0.6; to: 0.18 0.5 -0.6; dir: alternate; loop: 3; dur: 80; easing: linear');
+        `property: position; from: ${baseX - shake} ${baseY} ${baseZ}; to: ${baseX + shake} ${baseY} ${baseZ}; dir: alternate; loop: 3; dur: 80; easing: linear`);
+
     setTimeout(() => {
         sprite.removeAttribute('animation__shake');
-        sprite.setAttribute('position', '0 0.5 -0.6');
+        sprite.setAttribute('position', `${baseX} ${baseY} ${baseZ}`);
     }, 300);
 }
 
