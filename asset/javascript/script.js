@@ -215,20 +215,34 @@ function isTapOnBoss(tapX, tapY) {
 document.addEventListener('touchstart', handleTap, { passive: false });
 document.addEventListener('mousedown',  handleTap);
 
+// Guard anti-duplicado — si llega touchstart no procesamos el mousedown emulado
+let _lastTapTime = 0;
+const _TAP_DEDUP_MS = 400;
+
 function handleTap(e) {
     if (e.target.tagName === 'BUTTON') return;
-    console.log('[TAP] gameActive:', gameActive, '| markerVisible:', markerVisible, '| target:', e.target.tagName); //quitar depsues
-    if (!gameActive)  { console.log('[TAP] bloqueado: juego inactivo');  return; } //quitar el log despues
-    if (!markerVisible) { console.log('[TAP] bloqueado: marcador no visible'); return; } // quitar el log despues
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
-    try {
-        const _hitRect = getBossScreenRect();
-        console.log('[HIT] tap:', Math.round(x), Math.round(y), '| rect:', _hitRect);
-    } catch (err) {
-        console.warn('[HIT] no se pudo obtener rect:', err);
+
+    // Deduplicar: si acabamos de procesar un touch, ignorar mousedown emulado
+    const now = Date.now();
+    if (e.type === 'mousedown' && now - _lastTapTime < _TAP_DEDUP_MS) return;
+    if (e.type === 'touchstart') _lastTapTime = now;
+
+    if (!gameActive)    return;
+    if (!markerVisible) return;
+
+    // Obtener coordenadas del tap, protegido contra NaN
+    let x, y;
+    if (e.touches && e.touches.length > 0) {
+        x = e.touches[0].clientX;
+        y = e.touches[0].clientY;
+    } else if (typeof e.clientX === 'number' && !isNaN(e.clientX)) {
+        x = e.clientX;
+        y = e.clientY;
+    } else {
+        return; // sin coordenadas válidas, ignorar
     }
+
+    if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
     if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
     e.preventDefault();
     dealDamage(x, y);
