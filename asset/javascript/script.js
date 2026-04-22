@@ -139,8 +139,6 @@ if (marker) {
     marker.addEventListener('targetFound', () => {
         markerVisible = true;
         scanPrompt.style.display = 'none';
-        const tapHint = document.getElementById('tap-hint');
-        if (tapHint) tapHint.setAttribute('visible', true);
     });
     marker.addEventListener('targetLost', () => {
         markerVisible = false;
