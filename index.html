@@ -58,7 +58,7 @@
 <!-- Scan prompt -->
 <div id="scan-prompt">
   <span class="scan-dot"></span>
-  Apunta al marcador
+  Apunta a la imagen del boss
 </div>
 
 <!-- Start overlay -->
@@ -77,7 +77,7 @@
 
     <div class="overlay-boss-label">BOSS</div>
 
-    <div class="overlay-sub">Escanea el marcador<br>Derrota al enemigo</div>
+    <div class="overlay-sub">Escanea la imagen del boss<br>Derrota al enemigo</div>
 
     <button class="btn-start" onclick="startGame()">EMPEZAR</button>
 
@@ -142,7 +142,7 @@
 <a-scene
   mindar-image="imageTargetSrc: asset/targets/targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
   color-space="sRGB"
-  renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; alpha: true;"
+  renderer="colorManagement: true; antialias: true; alpha: true;"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
   embedded

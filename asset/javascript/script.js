@@ -39,13 +39,6 @@ const ATTACK_SPEED_MS    = 1800;
 const COMBO_RESET_MS     = 1500;
 
 // ══════════════════════════════════
-//  DEBUG FASE 2 — eliminar tras arreglar
-// ══════════════════════════════════
-window.addEventListener('error', (e) => {
-    console.error('[ERROR GLOBAL]', e.message, 'en', e.filename, ':', e.lineno);
-});
-
-// ══════════════════════════════════
 //  RECOMPENSAS
 // ══════════════════════════════════
 const REWARDS = [
@@ -79,7 +72,6 @@ let activeProjectiles = [];
 //  DOM REFS
 // ══════════════════════════════════
 const hpBar             = document.getElementById('hp-bar');
-const hpBar3D           = document.getElementById('hp-bar-3d');
 const scoreDisplay      = document.getElementById('score-display');
 const overlay           = document.getElementById('overlay');
 const scanPrompt        = document.getElementById('scan-prompt');
@@ -381,10 +373,6 @@ function updateHpUI() {
         bossHpCount.textContent = `${bossHP}/${BOSS_MAX_HP}`;
     } else {
         console.warn('[HUD] bossHpCount no encontrado');
-    }
-    if (hpBar3D) {
-        hpBar3D.setAttribute('width', (0.8 * pct).toFixed(3));
-        hpBar3D.setAttribute('position', `${(-0.4 * (1 - pct)).toFixed(3)} 0 0.005`);
     }
 }
 
@@ -917,9 +905,3 @@ window.adminLogin       = adminLogin;
 window.adminClearAll    = adminClearAll;
 window.adminLogout      = adminLogout;
 window.showAdminPanel   = showAdminPanel;
-
-// Log mínimo de tracking (opcional, para ver estabilidad)
-if (marker) {
-    marker.addEventListener('targetFound', () => console.log('[MindAR] 🎯 tracking on'));
-    marker.addEventListener('targetLost',  () => console.log('[MindAR] 🔍 tracking off'));
-}
