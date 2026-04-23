@@ -34,22 +34,9 @@ const BOSS_MAX_HP        = 20;
 const PLAYER_MAX_HP      = 5;
 const DAMAGE_PER_TAP     = 1;
 const SCORE_BASE         = 50;
-const ATTACK_INTERVAL_MS = 2800;   // tiempo entre ataques
-const WINDUP_MS          = 900;    // fase de aviso (preparación del golpe)
-const STRIKE_MS          = 200;    // ventana de parry (el golpe)
-const RECOVER_MS         = 400;    // recuperación tras el golpe
+const ATTACK_INTERVAL_MS = 2200;
+const ATTACK_SPEED_MS    = 1800;
 const COMBO_RESET_MS     = 1500;
-
-// ══════════════════════════════════
-//  ANIMACIÓN DEL BOSS — sprites por fase
-// ══════════════════════════════════
-const BOSS_FRAMES = {
-    idle:    ['#boss-idle1', '#boss-idle2', '#boss-idle3'],    // respiración en bucle
-    windup:  ['#boss-attack1', '#boss-attack2'],               // levanta el brazo
-    strike:  ['#boss-attack3'],                                // momento del puñetazo
-    recover: ['#boss-attack2', '#boss-idle2']                  // transición de vuelta a idle
-};
-const IDLE_FRAME_MS = 400;  // velocidad de la animación idle
 
 // ══════════════════════════════════
 //  RECOMPENSAS
@@ -79,8 +66,7 @@ let maxCombo          = 0;
 let comboTimer        = null;
 let damageTaken       = 0;
 let attackInterval    = null;
-let currentAttack     = null;   // { phase: 'windup'|'strike'|'recover', timeouts: [...], parried }
-let bossAnimTimer     = null;
+let activeProjectiles = [];
 
 // ══════════════════════════════════
 //  DOM REFS
@@ -95,49 +81,6 @@ const comboDisplay      = document.getElementById('combo-display');
 const multiplierDisplay = document.getElementById('multiplier-display');
 const bossHpCount       = document.getElementById('boss-hp-count');
 const playerHpCount     = document.getElementById('player-hp-count');
-
-// ══════════════════════════════════
-//  ANIMACIÓN DEL BOSS — helpers
-// ══════════════════════════════════
-function setBossFrame(src) {
-    const sprite = document.getElementById('boss-sprite');
-    if (sprite) sprite.setAttribute('material', 'src', src);
-}
-
-function playBossAnim(frames, duration) {
-    clearInterval(bossAnimTimer);
-    bossAnimTimer = null;
-    if (!frames || frames.length === 0) return;
-    if (frames.length === 1) { setBossFrame(frames[0]); return; }
-    let i = 0;
-    const step = Math.max(30, duration / frames.length);
-    setBossFrame(frames[0]);
-    bossAnimTimer = setInterval(() => {
-        i = (i + 1) % frames.length;
-        setBossFrame(frames[i]);
-    }, step);
-}
-
-function stopBossAnim() {
-    clearInterval(bossAnimTimer);
-    bossAnimTimer = null;
-    // Volver al loop de respiración idle (en vez de un frame fijo)
-    playIdleLoop();
-}
-
-// Loop continuo de respiración cuando el boss no está atacando
-function playIdleLoop() {
-    clearInterval(bossAnimTimer);
-    const frames = BOSS_FRAMES.idle;
-    if (!frames || frames.length === 0) return;
-    let i = 0;
-    setBossFrame(frames[0]);
-    if (frames.length === 1) return;
-    bossAnimTimer = setInterval(() => {
-        i = (i + 1) % frames.length;
-        setBossFrame(frames[i]);
-    }, IDLE_FRAME_MS);
-}
 
 // ══════════════════════════════════
 //  START / RESTART
@@ -159,8 +102,7 @@ function startGame() {
     updateScoreUI();
     updateComboUI();
     resultOverlay.classList.remove('visible');
-    cancelCurrentAttack();
-    playIdleLoop();
+    clearProjectiles();
     attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
 }
 
@@ -170,8 +112,7 @@ function stopGame() {
     gameActive = false;
     clearInterval(attackInterval);
     attackInterval = null;
-    cancelCurrentAttack();
-    stopBossAnim();
+    clearProjectiles();
     if (comboTimer) clearTimeout(comboTimer);
 }
 
@@ -291,9 +232,8 @@ function handleTap(e) {
         return; // sin coordenadas válidas, ignorar
     }
 
-    // Intentar parry primero — si estamos en fase strike y el tap cae sobre el boss
-    if (tryParry(x, y))     { e.preventDefault(); return; }
-    if (!isTapOnBoss(x, y)) { spawnMissIndicator(x, y); return; }
+    if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
+    if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
     e.preventDefault();
     dealDamage(x, y);
 }
@@ -342,72 +282,57 @@ function getMultiplier() {
 }
 
 // ══════════════════════════════════
-//  ATAQUES DEL BOSS — cuerpo a cuerpo con parry
+//  ATAQUES DEL BOSS
 // ══════════════════════════════════
 function bossAttack() {
     if (!gameActive || !markerVisible) return;
-    if (currentAttack) return; // ya hay uno en curso
-
-    currentAttack = { phase: 'windup', timeouts: [], parried: false };
-
-    // Telegraph visual (aro rojo que se cierra alrededor del boss)
-    spawnWindupIndicator();
-
-    // FASE 1 — WIND-UP (preparación)
-    playBossAnim(BOSS_FRAMES.windup, WINDUP_MS);
-
-    // FASE 2 — STRIKE (el golpe → ventana de parry)
-    currentAttack.timeouts.push(setTimeout(() => {
-        if (!currentAttack) return;
-        currentAttack.phase = 'strike';
-        playBossAnim(BOSS_FRAMES.strike, STRIKE_MS);
-        spawnStrikeImpact();
-
-        // Al final de la ventana de strike: si NO se bloqueó → daño
-        currentAttack.timeouts.push(setTimeout(() => {
-            if (currentAttack && !currentAttack.parried && gameActive) {
-                playerTakeDamage(window.innerWidth / 2, window.innerHeight / 2);
-            }
-            // FASE 3 — RECOVER
-            if (currentAttack) {
-                currentAttack.phase = 'recover';
-                playBossAnim(BOSS_FRAMES.recover, RECOVER_MS);
-                currentAttack.timeouts.push(setTimeout(() => {
-                    currentAttack = null;
-                    stopBossAnim();
-                }, RECOVER_MS));
-            }
-        }, STRIKE_MS));
-    }, WINDUP_MS));
+    const startX = window.innerWidth  * (0.2 + Math.random() * 0.6);
+    const startY = window.innerHeight * 0.25;
+    spawnProjectile(startX, startY);
 }
 
-// Devuelve true si el tap fue un parry válido (durante STRIKE sobre el boss)
-function tryParry(tapX, tapY) {
-    if (!currentAttack) return false;
-    if (currentAttack.phase !== 'strike') return false;
-    if (currentAttack.parried) return false;
-    if (!isTapOnBoss(tapX, tapY)) return false;
-
-    currentAttack.parried = true;
-    spawnRipple(tapX, tapY);
-    spawnFloatingText(tapX, tapY, '¡PARRY!', '#00eeff');
-
-    // Bonus de puntos + contraataque (daño extra al boss)
-    const bonus = Math.round(SCORE_BASE * 1.5);
-    score += bonus;
-    bossHP -= DAMAGE_PER_TAP;
-    if (bossHP < 0) bossHP = 0;
-    updateHpUI();
-    updateScoreUI();
-    flashBoss();
-    if (bossHP <= 0) setTimeout(showVictory, 600);
-    return true;
+function spawnProjectile(x, y) {
+    const el = document.createElement('div');
+    el.className  = 'boss-projectile';
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    document.body.appendChild(el);
+    const targetY = window.innerHeight * 0.85;
+    el.style.transition = `top ${ATTACK_SPEED_MS}ms linear`;
+    el.getBoundingClientRect();
+    el.style.top = targetY + 'px';
+    const proj = { el, x, startY: y, targetY,
+                   startTime: Date.now(), duration: ATTACK_SPEED_MS, deflected: false };
+    activeProjectiles.push(proj);
+    proj.timer = setTimeout(() => {
+        if (!proj.deflected && gameActive) playerTakeDamage(x, targetY);
+        removeProjectile(proj);
+    }, ATTACK_SPEED_MS);
 }
 
-function cancelCurrentAttack() {
-    if (!currentAttack) return;
-    currentAttack.timeouts.forEach(t => clearTimeout(t));
-    currentAttack = null;
+function tryDeflectProjectile(tapX, tapY) {
+    const HIT_RADIUS = 55;
+    for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+        const proj = activeProjectiles[i];
+        if (proj.deflected) continue;
+        const elapsed  = Date.now() - proj.startTime;
+        const progress = Math.min(elapsed / proj.duration, 1);
+        const currentY = proj.startY + (proj.targetY - proj.startY) * progress;
+        const dx = tapX - proj.x;
+        const dy = tapY - currentY;
+        if (Math.sqrt(dx * dx + dy * dy) < HIT_RADIUS) {
+            proj.deflected = true;
+            clearTimeout(proj.timer);
+            proj.el.classList.add('deflected');
+            setTimeout(() => removeProjectile(proj), 400);
+            spawnRipple(tapX, tapY);
+            spawnFloatingText(tapX, tapY, '¡BLOQUEADO!', '#00eeff');
+            score += Math.round(SCORE_BASE * 0.5);
+            updateScoreUI();
+            return true;
+        }
+    }
+    return false;
 }
 
 function playerTakeDamage(x, y) {
@@ -419,6 +344,20 @@ function playerTakeDamage(x, y) {
     spawnFloatingText(x, y, '¡GOLPE!', '#ff3333');
     screenFlash();
     if (playerHP <= 0) setTimeout(showDefeat, 400);
+}
+
+function removeProjectile(proj) {
+    if (proj.el && proj.el.parentNode) proj.el.parentNode.removeChild(proj.el);
+    const idx = activeProjectiles.indexOf(proj);
+    if (idx !== -1) activeProjectiles.splice(idx, 1);
+}
+
+function clearProjectiles() {
+    activeProjectiles.forEach(p => {
+        clearTimeout(p.timer);
+        if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
+    });
+    activeProjectiles = [];
 }
 
 // ══════════════════════════════════
@@ -508,35 +447,6 @@ function spawnFloatingText(x, y, text, color) {
     el.style.fontSize = '20px';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1000);
-}
-
-// Aro rojo que se cierra alrededor del boss durante el wind-up
-function spawnWindupIndicator() {
-    const rect = getBossScreenRect();
-    if (!rect) return;
-    const cx = rect.x + rect.w / 2;
-    const cy = rect.y + rect.h / 2;
-    const el = document.createElement('div');
-    el.className = 'windup-indicator';
-    el.style.left = cx + 'px';
-    el.style.top  = cy + 'px';
-    el.style.animationDuration = WINDUP_MS + 'ms';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), WINDUP_MS + 100);
-}
-
-// Flash de impacto en el momento del golpe
-function spawnStrikeImpact() {
-    const rect = getBossScreenRect();
-    if (!rect) return;
-    const cx = rect.x + rect.w / 2;
-    const cy = rect.y + rect.h * 0.7;
-    const el = document.createElement('div');
-    el.className = 'strike-impact';
-    el.style.left = cx + 'px';
-    el.style.top  = cy + 'px';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 400);
 }
 
 function screenFlash() {
