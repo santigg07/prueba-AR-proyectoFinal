@@ -7,6 +7,7 @@
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <link rel="stylesheet" href="asset/css/style.css">
+  <link rel="stylesheet" href="asset/css/audio.css"
   <link rel="icon" type="image/png" href="asset/imagen/LogoSETAvector.svg">
   
 </head>
@@ -199,6 +200,94 @@
 
 </a-scene>
 
+<!-- ══════════════════════════════════════════════════════
+     Panel desplegalbe con mute maste + sliders separados
+═══════════════════════════════════════════════════════ -->
+<div id="audio-panel" class="audio-panel">
+  <button id="audio-gear-btn" class="audio-gear-btn" aria-label="Audio settings">⚙</button>
+
+  <div id="audio-panel-body" class="audio-panel-body">
+    <div class="apb-header">
+      <span>Audio</span>
+      <button id="apb-close" class="apb-close"></button>
+    </div>
+
+    <button id="apb-mute" class="apb-mute">
+      <span class="apb-mute-icon">🔊</span>
+      <span class="apb-mute-text">Silenciar todo</span>
+    </button>
+
+    <div class="apb-row">
+      <div class="apb-row-head">
+        <span class="apb-label">🎵 Música</span>
+        <span class="apb-value" id="apb-music-val">60</span>
+      </div>
+      <input type="range" id="apb-music" min="0" max="100" value="60">
+    </div>
+
+    <div class="apb-row">
+      <div class="apb-row-head">
+        <span class="apb-label">🔔 Efectos</span>
+        <span class="apb-value" id="apb-sfx-val">80</span>
+      </div>
+      <input type="range" id="apb-sfx" min="0" max="100" value="80">
+    </div>
+  </div>
+</div>
+
 <script type="module" src="asset/javascript/script.js"></script>
+<!-- JS: incluir como <script type="module"> al final del body -->
+<script type="module">
+  import { audio } from './asset/javascript/audio-manager.js';
+ 
+  const gear   = document.getElementById('audio-gear-btn');
+  const body   = document.getElementById('audio-panel-body');
+  const close  = document.getElementById('apb-close');
+  const muteBt = document.getElementById('apb-mute');
+  const muteIc = muteBt.querySelector('.apb-mute-icon');
+  const muteTx = muteBt.querySelector('.apb-mute-text');
+  const music  = document.getElementById('apb-music');
+  const sfx    = document.getElementById('apb-sfx');
+  const musicV = document.getElementById('apb-music-val');
+  const sfxV   = document.getElementById('apb-sfx-val');
+ 
+  // Sincronizar UI con estado guardado
+  const s = audio.getState();
+  music.value = Math.round(s.musicVolume * 100);
+  sfx.value   = Math.round(s.sfxVolume * 100);
+  musicV.textContent = music.value;
+  sfxV.textContent   = sfx.value;
+  refreshMuteUI();
+ 
+  function refreshMuteUI() {
+    const muted = audio.getState().muted;
+    muteIc.textContent = muted ? '🔇' : '🔊';
+    muteTx.textContent = muted ? 'Sonido silenciado' : 'Silenciar todo';
+    muteBt.classList.toggle('active', muted);
+    gear.classList.toggle('muted', muted);
+  }
+ 
+  gear.addEventListener('click', () => body.classList.toggle('open'));
+  close.addEventListener('click', () => body.classList.remove('open'));
+  muteBt.addEventListener('click', () => {
+    audio.toggleMute();
+    refreshMuteUI();
+  });
+  music.addEventListener('input', (e) => {
+    audio.setMusicVolume(e.target.value / 100);
+    musicV.textContent = e.target.value;
+  });
+  sfx.addEventListener('input', (e) => {
+    audio.setSfxVolume(e.target.value / 100);
+    sfxV.textContent = e.target.value;
+  });
+ 
+  // Cerrar panel al tocar fuera
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('audio-panel').contains(e.target)) {
+      body.classList.remove('open');
+    }
+  });
+</script>
 </body>
 </html>

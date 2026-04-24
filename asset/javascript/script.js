@@ -1,4 +1,9 @@
 // ══════════════════════════════════
+//  AUDIO
+// ══════════════════════════════════
+import { audio } from './audio-manager.js';
+
+// ══════════════════════════════════
 //  FIREBASE — imports y configuración
 // ══════════════════════════════════
 import { initializeApp }
@@ -26,6 +31,9 @@ const MAX_ENTRIES = 8;
 
 // Login anónimo automático al cargar — necesario para poder escribir
 signInAnonymously(auth).catch(err => console.warn('Auth anónima fallida:', err));
+
+// Arrancar música del menú (el AudioManager esperará al primer gesto del usuario)
+audio.playMusic('menu');
 
 // ══════════════════════════════════
 //  CONFIG JUEGO
@@ -156,6 +164,7 @@ function playIdleLoop() {
 function startGame() {
     cancelLeaderboardListener();
     overlay.classList.add('hidden');
+    audio.playMusic('combat');
     gameActive   = true;
     bossHP       = BOSS_MAX_HP;
     playerHP     = PLAYER_MAX_HP;
@@ -345,6 +354,7 @@ function dealDamage(x, y) {
     }
 
     bossHP -= DAMAGE_PER_TAP;
+    audio.playSfx('hit');
     comboCount++;
     if (comboCount > maxCombo) maxCombo = comboCount;
     if (comboTimer) clearTimeout(comboTimer);
@@ -367,6 +377,7 @@ function dealDamage(x, y) {
 
 // Boss bloquea el tap del jugador → no hay daño, no rompe combo, feedback visual
 function bossBlocksTap(x, y) {
+    audio.playSfx('block');
     // Mostrar animación de bloqueo (interrumpe idle loop temporalmente)
     clearInterval(bossAnimTimer);
     bossAnimTimer = null;
@@ -439,6 +450,9 @@ function bossAttack() {
 
     currentAttack = { phase: 'windup', timeouts: [], parried: false, parryOpenAt: 0 };
 
+    // Sonido de ataque al empezar el wind-up
+    audio.playSfx('attack');
+
     // Telegraph visual (aro rojo que se cierra alrededor del boss)
     spawnWindupIndicator();
 
@@ -485,6 +499,7 @@ function tryParry(tapX, tapY) {
     if (!isTapOnBoss(tapX, tapY)) return false;
 
     currentAttack.parried = true;
+    audio.playSfx('parry');
     spawnRipple(tapX, tapY);
     spawnFloatingText(tapX, tapY, '¡PARRY!', '#00eeff');
 
@@ -508,6 +523,7 @@ function cancelCurrentAttack() {
 
 function playerTakeDamage(x, y) {
     playerHP = Math.max(0, playerHP - 1);
+    audio.playSfx('damage');
     damageTaken++;
     comboCount = 0;
     updateComboUI();
@@ -1012,11 +1028,19 @@ function showVictory() {
     attackInterval = null;
     cancelCurrentAttack();
     gameActive = false;
+    // Audio: golpe final + música de victoria (fade del combate a la victoria)
+    audio.playSfx('defeat');
+    audio.playMusic('victory');
     // Reproducir animación de derrota del boss antes del overlay
     playDefeatAnim();
     setTimeout(() => { stopGame(); showResult(true); }, DEFEAT_ANIM_MS + 200);
 }
-function showDefeat()  { stopGame(); showResult(false); }
+function showDefeat()  {
+    // Al perder, volvemos a la música del menú para el overlay de resultado
+    audio.playMusic('menu');
+    stopGame();
+    showResult(false);
+}
 
 async function showResult(won) {
     const tiempoSegundos = Math.floor((Date.now() - tiempoInicio) / 1000);

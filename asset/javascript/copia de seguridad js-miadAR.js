@@ -34,9 +34,31 @@ const BOSS_MAX_HP        = 20;
 const PLAYER_MAX_HP      = 5;
 const DAMAGE_PER_TAP     = 1;
 const SCORE_BASE         = 50;
-const ATTACK_INTERVAL_MS = 2200;
-const ATTACK_SPEED_MS    = 1800;
+const ATTACK_INTERVAL_MS = 2800;   // tiempo entre ataques
+const WINDUP_MS          = 900;    // fase de aviso (preparación del golpe)
+const STRIKE_MS          = 200;    // duración visual del golpe
+const PARRY_WINDOW_MS    = 450;    // ventana real para bloquear (empieza antes del strike)
+const PARRY_PRE_MS       = 180;    // cuánto antes del strike se puede empezar a bloquear
+const RECOVER_MS         = 400;    // recuperación tras el golpe
 const COMBO_RESET_MS     = 1500;
+const BOSS_BLOCK_CHANCE  = 0.35;   // probabilidad de que el boss bloquee un tap
+const BOSS_BLOCK_ANIM_MS = 300;    // duración de la animación de bloqueo
+
+// ══════════════════════════════════
+//  ANIMACIÓN DEL BOSS — sprites por fase
+// ══════════════════════════════════
+const BOSS_FRAMES = {
+    idle:    ['#boss-idle1', '#boss-idle2', '#boss-idle3'],    // respiración en bucle
+    windup:  ['#boss-attack1', '#boss-attack2'],               // levanta el brazo
+    strike:  ['#boss-attack3'],                                // momento del puñetazo
+    recover: ['#boss-attack2', '#boss-idle2'],                 // transición de vuelta a idle
+    block:   ['#boss-block'],                                  // el boss bloquea
+    hurt:    ['#boss-hurt'],                                   // el boss recibe daño
+    defeat:  ['#boss-defeat1', '#boss-defeat2', '#boss-defeat3'] // animación de derrota
+};
+const IDLE_FRAME_MS = 400;  // velocidad de la animación idle
+const HURT_ANIM_MS  = 200;  // duración del frame hurt
+const DEFEAT_ANIM_MS = 1200; // duración total de la animación de derrota
 
 // ══════════════════════════════════
 //  RECOMPENSAS
@@ -66,7 +88,10 @@ let maxCombo          = 0;
 let comboTimer        = null;
 let damageTaken       = 0;
 let attackInterval    = null;
-let activeProjectiles = [];
+let currentAttack     = null;   // { phase: 'windup'|'strike'|'recover', timeouts: [...], parried, parryOpenAt }
+let bossAnimTimer     = null;
+let bossBusyUntil     = 0;      // timestamp hasta el que el boss está en animación de reacción (block/hurt)
+let bossDefeated      = false;  // flag para la animación de derrota
 
 // ══════════════════════════════════
 //  DOM REFS
@@ -83,6 +108,49 @@ const bossHpCount       = document.getElementById('boss-hp-count');
 const playerHpCount     = document.getElementById('player-hp-count');
 
 // ══════════════════════════════════
+//  ANIMACIÓN DEL BOSS — helpers
+// ══════════════════════════════════
+function setBossFrame(src) {
+    const sprite = document.getElementById('boss-sprite');
+    if (sprite) sprite.setAttribute('material', 'src', src);
+}
+
+function playBossAnim(frames, duration) {
+    clearInterval(bossAnimTimer);
+    bossAnimTimer = null;
+    if (!frames || frames.length === 0) return;
+    if (frames.length === 1) { setBossFrame(frames[0]); return; }
+    let i = 0;
+    const step = Math.max(30, duration / frames.length);
+    setBossFrame(frames[0]);
+    bossAnimTimer = setInterval(() => {
+        i = (i + 1) % frames.length;
+        setBossFrame(frames[i]);
+    }, step);
+}
+
+function stopBossAnim() {
+    clearInterval(bossAnimTimer);
+    bossAnimTimer = null;
+    // Volver al loop de respiración idle (en vez de un frame fijo)
+    playIdleLoop();
+}
+
+// Loop continuo de respiración cuando el boss no está atacando
+function playIdleLoop() {
+    clearInterval(bossAnimTimer);
+    const frames = BOSS_FRAMES.idle;
+    if (!frames || frames.length === 0) return;
+    let i = 0;
+    setBossFrame(frames[0]);
+    if (frames.length === 1) return;
+    bossAnimTimer = setInterval(() => {
+        i = (i + 1) % frames.length;
+        setBossFrame(frames[i]);
+    }, IDLE_FRAME_MS);
+}
+
+// ══════════════════════════════════
 //  START / RESTART
 // ══════════════════════════════════
 function startGame() {
@@ -95,6 +163,8 @@ function startGame() {
     comboCount   = 0;
     maxCombo     = 0;
     damageTaken  = 0;
+    bossDefeated = false;
+    bossBusyUntil = 0;
     tiempoInicio = Date.now();
 
     updateHpUI();
@@ -102,7 +172,8 @@ function startGame() {
     updateScoreUI();
     updateComboUI();
     resultOverlay.classList.remove('visible');
-    clearProjectiles();
+    cancelCurrentAttack();
+    playIdleLoop();
     attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
 }
 
@@ -112,7 +183,11 @@ function stopGame() {
     gameActive = false;
     clearInterval(attackInterval);
     attackInterval = null;
-    clearProjectiles();
+    cancelCurrentAttack();
+    // Solo paramos la animación si NO estamos en la secuencia de derrota
+    if (!bossDefeated) {
+        stopBossAnim();
+    }
     if (comboTimer) clearTimeout(comboTimer);
 }
 
@@ -232,8 +307,9 @@ function handleTap(e) {
         return; // sin coordenadas válidas, ignorar
     }
 
-    if (tryDeflectProjectile(x, y)) { e.preventDefault(); return; }
-    if (!isTapOnBoss(x, y))         { spawnMissIndicator(x, y); return; }
+    // Intentar parry primero — si estamos en fase strike y el tap cae sobre el boss
+    if (tryParry(x, y))     { e.preventDefault(); return; }
+    if (!isTapOnBoss(x, y)) { spawnMissIndicator(x, y); return; }
     e.preventDefault();
     dealDamage(x, y);
 }
@@ -256,6 +332,18 @@ function spawnMissIndicator(x, y) {
 // ══════════════════════════════════
 function dealDamage(x, y) {
     if (bossHP <= 0) return;
+    if (bossDefeated) return;
+
+    // ── BLOQUEO DEL BOSS ──
+    // No puede bloquear si está en mitad de un ataque (sería raro visualmente)
+    // Tampoco si acaba de bloquear/recibir daño (cooldown visual)
+    const now = Date.now();
+    const canBlock = !currentAttack && now >= bossBusyUntil;
+    if (canBlock && Math.random() < BOSS_BLOCK_CHANCE) {
+        bossBlocksTap(x, y);
+        return;
+    }
+
     bossHP -= DAMAGE_PER_TAP;
     comboCount++;
     if (comboCount > maxCombo) maxCombo = comboCount;
@@ -270,7 +358,67 @@ function dealDamage(x, y) {
     spawnRipple(x, y);
     spawnDamageNumber(x, y, pts);
     flashBoss();
+
+    // Animación hurt (salvo que estemos en ataque activo — priorizar animación de ataque)
+    if (!currentAttack) playHurtAnim();
+
     if (bossHP <= 0) { bossHP = 0; updateHpUI(); setTimeout(showVictory, 600); }
+}
+
+// Boss bloquea el tap del jugador → no hay daño, no rompe combo, feedback visual
+function bossBlocksTap(x, y) {
+    // Mostrar animación de bloqueo (interrumpe idle loop temporalmente)
+    clearInterval(bossAnimTimer);
+    bossAnimTimer = null;
+    setBossFrame(BOSS_FRAMES.block[0]);
+    bossBusyUntil = Date.now() + BOSS_BLOCK_ANIM_MS;
+
+    // Volver a idle cuando termine (si no ha empezado un ataque entretanto)
+    setTimeout(() => {
+        if (!currentAttack && !bossDefeated && Date.now() >= bossBusyUntil) {
+            playIdleLoop();
+        }
+    }, BOSS_BLOCK_ANIM_MS);
+
+    // Feedback visual al jugador
+    spawnFloatingText(x, y, 'BLOQUEADO', '#aaaaaa');
+    spawnRipple(x, y);
+}
+
+// Animación rápida de daño (frame hurt → vuelta a idle)
+function playHurtAnim() {
+    clearInterval(bossAnimTimer);
+    bossAnimTimer = null;
+    setBossFrame(BOSS_FRAMES.hurt[0]);
+    bossBusyUntil = Date.now() + HURT_ANIM_MS;
+    setTimeout(() => {
+        if (!currentAttack && !bossDefeated && Date.now() >= bossBusyUntil) {
+            playIdleLoop();
+        }
+    }, HURT_ANIM_MS);
+}
+
+// Animación de derrota (se reproduce una vez, sin loop)
+function playDefeatAnim() {
+    bossDefeated = true;
+    clearInterval(bossAnimTimer);
+    bossAnimTimer = null;
+    const frames = BOSS_FRAMES.defeat;
+    if (!frames || frames.length === 0) return;
+    const step = DEFEAT_ANIM_MS / frames.length;
+    let i = 0;
+    setBossFrame(frames[0]);
+    bossAnimTimer = setInterval(() => {
+        i++;
+        if (i >= frames.length) {
+            clearInterval(bossAnimTimer);
+            bossAnimTimer = null;
+            // Se queda congelado en el último frame
+            setBossFrame(frames[frames.length - 1]);
+            return;
+        }
+        setBossFrame(frames[i]);
+    }, step);
 }
 
 function getMultiplier() {
@@ -282,57 +430,80 @@ function getMultiplier() {
 }
 
 // ══════════════════════════════════
-//  ATAQUES DEL BOSS
+//  ATAQUES DEL BOSS — cuerpo a cuerpo con parry
 // ══════════════════════════════════
 function bossAttack() {
     if (!gameActive || !markerVisible) return;
-    const startX = window.innerWidth  * (0.2 + Math.random() * 0.6);
-    const startY = window.innerHeight * 0.25;
-    spawnProjectile(startX, startY);
+    if (currentAttack) return; // ya hay uno en curso
+    if (bossDefeated)  return;
+
+    currentAttack = { phase: 'windup', timeouts: [], parried: false, parryOpenAt: 0 };
+
+    // Telegraph visual (aro rojo que se cierra alrededor del boss)
+    spawnWindupIndicator();
+
+    // FASE 1 — WIND-UP (preparación)
+    playBossAnim(BOSS_FRAMES.windup, WINDUP_MS);
+
+    // La ventana de parry se abre un poco ANTES del strike (más permisivo)
+    currentAttack.parryOpenAt = Date.now() + WINDUP_MS - PARRY_PRE_MS;
+
+    // FASE 2 — STRIKE (el golpe visual)
+    currentAttack.timeouts.push(setTimeout(() => {
+        if (!currentAttack) return;
+        currentAttack.phase = 'strike';
+        playBossAnim(BOSS_FRAMES.strike, STRIKE_MS);
+        spawnStrikeImpact();
+
+        // El daño al jugador se evalúa cuando termina la ventana de parry completa
+        const parryEndsIn = Math.max(0, (currentAttack.parryOpenAt + PARRY_WINDOW_MS) - Date.now());
+        currentAttack.timeouts.push(setTimeout(() => {
+            if (currentAttack && !currentAttack.parried && gameActive) {
+                playerTakeDamage(window.innerWidth / 2, window.innerHeight / 2);
+            }
+            // FASE 3 — RECOVER
+            if (currentAttack) {
+                currentAttack.phase = 'recover';
+                playBossAnim(BOSS_FRAMES.recover, RECOVER_MS);
+                currentAttack.timeouts.push(setTimeout(() => {
+                    currentAttack = null;
+                    if (!bossDefeated) playIdleLoop();
+                }, RECOVER_MS));
+            }
+        }, parryEndsIn));
+    }, WINDUP_MS));
 }
 
-function spawnProjectile(x, y) {
-    const el = document.createElement('div');
-    el.className  = 'boss-projectile';
-    el.style.left = x + 'px';
-    el.style.top  = y + 'px';
-    document.body.appendChild(el);
-    const targetY = window.innerHeight * 0.85;
-    el.style.transition = `top ${ATTACK_SPEED_MS}ms linear`;
-    el.getBoundingClientRect();
-    el.style.top = targetY + 'px';
-    const proj = { el, x, startY: y, targetY,
-                   startTime: Date.now(), duration: ATTACK_SPEED_MS, deflected: false };
-    activeProjectiles.push(proj);
-    proj.timer = setTimeout(() => {
-        if (!proj.deflected && gameActive) playerTakeDamage(x, targetY);
-        removeProjectile(proj);
-    }, ATTACK_SPEED_MS);
+// Devuelve true si el tap fue un parry válido (dentro de la ventana y sobre el boss)
+function tryParry(tapX, tapY) {
+    if (!currentAttack) return false;
+    if (currentAttack.parried) return false;
+    // Ventana ampliada: desde parryOpenAt hasta parryOpenAt + PARRY_WINDOW_MS
+    const now = Date.now();
+    if (now < currentAttack.parryOpenAt) return false;
+    if (now > currentAttack.parryOpenAt + PARRY_WINDOW_MS) return false;
+    if (!isTapOnBoss(tapX, tapY)) return false;
+
+    currentAttack.parried = true;
+    spawnRipple(tapX, tapY);
+    spawnFloatingText(tapX, tapY, '¡PARRY!', '#00eeff');
+
+    // Bonus de puntos + contraataque (daño extra al boss)
+    const bonus = Math.round(SCORE_BASE * 1.5);
+    score += bonus;
+    bossHP -= DAMAGE_PER_TAP;
+    if (bossHP < 0) bossHP = 0;
+    updateHpUI();
+    updateScoreUI();
+    flashBoss();
+    if (bossHP <= 0) setTimeout(showVictory, 600);
+    return true;
 }
 
-function tryDeflectProjectile(tapX, tapY) {
-    const HIT_RADIUS = 55;
-    for (let i = activeProjectiles.length - 1; i >= 0; i--) {
-        const proj = activeProjectiles[i];
-        if (proj.deflected) continue;
-        const elapsed  = Date.now() - proj.startTime;
-        const progress = Math.min(elapsed / proj.duration, 1);
-        const currentY = proj.startY + (proj.targetY - proj.startY) * progress;
-        const dx = tapX - proj.x;
-        const dy = tapY - currentY;
-        if (Math.sqrt(dx * dx + dy * dy) < HIT_RADIUS) {
-            proj.deflected = true;
-            clearTimeout(proj.timer);
-            proj.el.classList.add('deflected');
-            setTimeout(() => removeProjectile(proj), 400);
-            spawnRipple(tapX, tapY);
-            spawnFloatingText(tapX, tapY, '¡BLOQUEADO!', '#00eeff');
-            score += Math.round(SCORE_BASE * 0.5);
-            updateScoreUI();
-            return true;
-        }
-    }
-    return false;
+function cancelCurrentAttack() {
+    if (!currentAttack) return;
+    currentAttack.timeouts.forEach(t => clearTimeout(t));
+    currentAttack = null;
 }
 
 function playerTakeDamage(x, y) {
@@ -344,20 +515,6 @@ function playerTakeDamage(x, y) {
     spawnFloatingText(x, y, '¡GOLPE!', '#ff3333');
     screenFlash();
     if (playerHP <= 0) setTimeout(showDefeat, 400);
-}
-
-function removeProjectile(proj) {
-    if (proj.el && proj.el.parentNode) proj.el.parentNode.removeChild(proj.el);
-    const idx = activeProjectiles.indexOf(proj);
-    if (idx !== -1) activeProjectiles.splice(idx, 1);
-}
-
-function clearProjectiles() {
-    activeProjectiles.forEach(p => {
-        clearTimeout(p.timer);
-        if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
-    });
-    activeProjectiles = [];
 }
 
 // ══════════════════════════════════
@@ -447,6 +604,35 @@ function spawnFloatingText(x, y, text, color) {
     el.style.fontSize = '20px';
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1000);
+}
+
+// Aro rojo que se cierra alrededor del boss durante el wind-up
+function spawnWindupIndicator() {
+    const rect = getBossScreenRect();
+    if (!rect) return;
+    const cx = rect.x + rect.w / 2;
+    const cy = rect.y + rect.h / 2;
+    const el = document.createElement('div');
+    el.className = 'windup-indicator';
+    el.style.left = cx + 'px';
+    el.style.top  = cy + 'px';
+    el.style.animationDuration = WINDUP_MS + 'ms';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), WINDUP_MS + 100);
+}
+
+// Flash de impacto en el momento del golpe
+function spawnStrikeImpact() {
+    const rect = getBossScreenRect();
+    if (!rect) return;
+    const cx = rect.x + rect.w / 2;
+    const cy = rect.y + rect.h * 0.7;
+    const el = document.createElement('div');
+    el.className = 'strike-impact';
+    el.style.left = cx + 'px';
+    el.style.top  = cy + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 400);
 }
 
 function screenFlash() {
@@ -820,7 +1006,16 @@ function renderRewards(score, time, combo, dmgTaken) {
 // ══════════════════════════════════
 //  FIN DE PARTIDA
 // ══════════════════════════════════
-function showVictory() { stopGame(); showResult(true);  }
+function showVictory() {
+    // Parar el bucle de ataques y cancelar cualquier ataque en curso
+    clearInterval(attackInterval);
+    attackInterval = null;
+    cancelCurrentAttack();
+    gameActive = false;
+    // Reproducir animación de derrota del boss antes del overlay
+    playDefeatAnim();
+    setTimeout(() => { stopGame(); showResult(true); }, DEFEAT_ANIM_MS + 200);
+}
 function showDefeat()  { stopGame(); showResult(false); }
 
 async function showResult(won) {

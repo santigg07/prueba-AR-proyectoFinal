@@ -1,0 +1,274 @@
+/* ══════════════════════════════════════════════════════════════
+   AUDIO UI
+   Estilos para ambas versiones (A: FAB / B: Panel desplegable).
+   Ambos bloques son independientes — si solo usas una versión,
+   puedes borrar la otra sección.
+══════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════
+   VERSIÓN A — Floating Action Button
+══════════════════════════ */
+.audio-fab {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 1500;
+    pointer-events: auto;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.audio-fab-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.audio-fab-btn:active { transform: scale(0.92); }
+
+.audio-fab-btn.muted {
+    border-color: rgba(255, 80, 80, 0.5);
+    color: rgba(255, 120, 120, 0.9);
+}
+
+.audio-fab-panel {
+    position: absolute;
+    top: 52px;
+    right: 0;
+    width: 200px;
+    padding: 12px 14px;
+    background: rgba(10, 10, 20, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.audio-fab-panel.open { display: flex; }
+
+.afp-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.afp-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.afp-row input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    outline: none;
+}
+
+.afp-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00ff88;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+
+.afp-row input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: #00ff88;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+
+
+/* ══════════════════════════
+   VERSIÓN B — Panel desplegable con engranaje
+══════════════════════════ */
+.audio-panel {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 1500;
+    pointer-events: auto;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.audio-gear-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: transform 0.3s ease, border-color 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+.audio-gear-btn:hover  { transform: rotate(45deg); }
+.audio-gear-btn:active { transform: rotate(45deg) scale(0.92); }
+.audio-gear-btn.muted  { border-color: rgba(255, 80, 80, 0.4); color: rgba(255, 120, 120, 0.8); }
+
+.audio-panel-body {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 240px;
+    padding: 16px;
+    background: linear-gradient(160deg, rgba(15, 15, 32, 0.95), rgba(26, 16, 32, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    transform-origin: top right;
+    animation: apb-appear 0.2s ease;
+}
+.audio-panel-body.open { display: flex; }
+
+@keyframes apb-appear {
+    from { opacity: 0; transform: scale(0.92) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.apb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.apb-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+}
+.apb-close:hover { color: #fff; }
+
+.apb-mute {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+.apb-mute:hover { background: rgba(255, 255, 255, 0.07); }
+.apb-mute.active {
+    background: rgba(255, 80, 80, 0.1);
+    border-color: rgba(255, 80, 80, 0.3);
+    color: rgba(255, 140, 140, 0.9);
+}
+
+.apb-mute-icon { font-size: 16px; }
+
+.apb-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.apb-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.apb-label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.apb-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(0, 255, 136, 0.85);
+    min-width: 24px;
+    text-align: right;
+}
+
+.apb-row input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+}
+
+.apb-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    border: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.apb-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
