@@ -18,9 +18,9 @@ const MUSIC_TRACKS = {
 
 const SFX_FILES = {
     attack: AUDIO_BASE + "sfx-attack.mp3",
-    hit:    AUDIO_BASE + "sfx-hit.mp3",
+    hit:    AUDIO_BASE + "SFX-zarpazo-pumpumf.mp3",
     parry:  AUDIO_BASE + "",
-    block:  AUDIO_BASE + "SFX-zarpazo-pumpumf.mp3",
+    block:  AUDIO_BASE + "sfx-block.mp3",
     damage: AUDIO_BASE + "sfx-damage.mp3",
     defeat: AUDIO_BASE + "sfx-defeat.mp3"
 };
