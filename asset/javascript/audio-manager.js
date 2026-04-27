@@ -20,14 +20,14 @@ const SFX_FILES = {
     attack: AUDIO_BASE + "sfx-attack.mp3",
     hit:    AUDIO_BASE + "sfx-hit.mp3",
     parry:  AUDIO_BASE + "",
-    block:  AUDIO_BASE + "sfx-block.mp3",
+    block:  AUDIO_BASE + "SFX-zarpazo-pumpumf.mp3",
     damage: AUDIO_BASE + "sfx-damage.mp3",
     defeat: AUDIO_BASE + "sfx-defeat.mp3"
 };
 
-const FADE_MS = 400; // duración del crossfade entre pistas
+const FADE_MS = 800; // duración del crossfade entre pistas
 const FADE_STEPS = 20; // resolución del fade
-const SFX_POOL_SIZE = 4; // instacias por efecto (solapamiento)
+const SFX_POOL_SIZE = 10; // instacias por efecto (solapamiento)
 const LS_KEY = "spores-audio-settings";
 
 class AudioManager {
