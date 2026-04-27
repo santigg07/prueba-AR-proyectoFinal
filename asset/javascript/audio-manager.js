@@ -27,7 +27,7 @@ const SFX_FILES = {
 
 const FADE_MS = 800; // duración del crossfade entre pistas
 const FADE_STEPS = 20; // resolución del fade
-const SFX_POOL_SIZE = 10; // instacias por efecto (solapamiento)
+const SFX_POOL_SIZE = 50; // instacias por efecto (solapamiento)
 const LS_KEY = "spores-audio-settings";
 
 class AudioManager {
