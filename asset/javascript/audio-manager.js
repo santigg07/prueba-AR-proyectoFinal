@@ -11,8 +11,8 @@ const AUDIO_BASE = "asset/audio/";
 
 // Mapa de archivos 
 const MUSIC_TRACKS = {
-    menu:    AUDIO_BASE + "music-menu.mp3",
-    combat:  AUDIO_BASE + "music-combat.mp3",
+    menu:    AUDIO_BASE + "music-menu-bajo.mp3",
+    combat:  AUDIO_BASE + "music-combat-bajo.mp3",
     victory: AUDIO_BASE + "music-victory.mp3"
 };
 
