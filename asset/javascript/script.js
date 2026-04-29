@@ -38,7 +38,7 @@ audio.playMusic('menu');
 // ══════════════════════════════════
 //  CONFIG JUEGO
 // ══════════════════════════════════
-const BOSS_MAX_HP        = 20;
+const BOSS_MAX_HP        = 50;
 const PLAYER_MAX_HP      = 5;
 const DAMAGE_PER_TAP     = 1;
 const SCORE_BASE         = 50;
@@ -54,8 +54,8 @@ const BOSS_BLOCK_CHANCE  = 0.35;   // probabilidad de que el boss bloquee un tap
 const BOSS_BLOCK_ANIM_MS = 300;    // duración de la animación de bloqueo
 
 // ── STAMINA del jugador ──
-const STAMINA_MAX        = 4;      // golpes seguidos posibles
-const STAMINA_REGEN_MS   = 600;    // 1 punto cada X ms
+const STAMINA_MAX        = 3;      // golpes seguidos posibles
+const STAMINA_REGEN_MS   = 800;    // 1 punto cada X ms
 const STAMINA_COST       = 1;      // coste por golpe
 
 // ══════════════════════════════════
