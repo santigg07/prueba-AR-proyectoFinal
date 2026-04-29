@@ -42,7 +42,8 @@ const BOSS_MAX_HP        = 20;
 const PLAYER_MAX_HP      = 5;
 const DAMAGE_PER_TAP     = 1;
 const SCORE_BASE         = 50;
-const ATTACK_INTERVAL_MS = 2800;   // tiempo entre ataques
+const ATTACK_INTERVAL_MS    = 3800;   // intervalo base entre ataques (más calmado)
+const ATTACK_INTERVAL_VAR   = 400;    // variación aleatoria ±X ms (ritmo no robótico)
 const WINDUP_MS          = 900;    // fase de aviso (preparación del golpe)
 const STRIKE_MS          = 200;    // duración visual del golpe
 const PARRY_WINDOW_MS    = 450;    // ventana real para bloquear (empieza antes del strike)
@@ -51,6 +52,11 @@ const RECOVER_MS         = 400;    // recuperación tras el golpe
 const COMBO_RESET_MS     = 1500;
 const BOSS_BLOCK_CHANCE  = 0.35;   // probabilidad de que el boss bloquee un tap
 const BOSS_BLOCK_ANIM_MS = 300;    // duración de la animación de bloqueo
+
+// ── STAMINA del jugador ──
+const STAMINA_MAX        = 4;      // golpes seguidos posibles
+const STAMINA_REGEN_MS   = 600;    // 1 punto cada X ms
+const STAMINA_COST       = 1;      // coste por golpe
 
 // ══════════════════════════════════
 //  ANIMACIÓN DEL BOSS — sprites por fase
@@ -100,6 +106,9 @@ let currentAttack     = null;   // { phase: 'windup'|'strike'|'recover', timeout
 let bossAnimTimer     = null;
 let bossBusyUntil     = 0;      // timestamp hasta el que el boss está en animación de reacción (block/hurt)
 let bossDefeated      = false;  // flag para la animación de derrota
+let stamina           = STAMINA_MAX;
+let staminaRegenTimer = null;
+let attackTimeout     = null;   // timeout del próximo ataque del boss (intervalo variable)
 
 // ══════════════════════════════════
 //  DOM REFS
@@ -114,6 +123,8 @@ const comboDisplay      = document.getElementById('combo-display');
 const multiplierDisplay = document.getElementById('multiplier-display');
 const bossHpCount       = document.getElementById('boss-hp-count');
 const playerHpCount     = document.getElementById('player-hp-count');
+const staminaBar        = document.getElementById('stamina-bar');
+const staminaCount      = document.getElementById('stamina-count');
 
 // ══════════════════════════════════
 //  ANIMACIÓN DEL BOSS — helpers
@@ -174,24 +185,30 @@ function startGame() {
     damageTaken  = 0;
     bossDefeated = false;
     bossBusyUntil = 0;
+    stamina      = STAMINA_MAX;
     tiempoInicio = Date.now();
 
     updateHpUI();
     updatePlayerHpUI();
     updateScoreUI();
     updateComboUI();
+    updateStaminaUI();
     resultOverlay.classList.remove('visible');
     cancelCurrentAttack();
     playIdleLoop();
-    attackInterval = setInterval(bossAttack, ATTACK_INTERVAL_MS);
+    startStaminaRegen();
+    scheduleNextBossAttack();
 }
 
 function restartGame() { startGame(); }
 
 function stopGame() {
     gameActive = false;
-    clearInterval(attackInterval);
+    clearTimeout(attackTimeout);
+    attackTimeout = null;
+    clearInterval(attackInterval); // por compatibilidad si quedó algún resto
     attackInterval = null;
+    stopStaminaRegen();
     cancelCurrentAttack();
     // Solo paramos la animación si NO estamos en la secuencia de derrota
     if (!bossDefeated) {
@@ -343,6 +360,23 @@ function dealDamage(x, y) {
     if (bossHP <= 0) return;
     if (bossDefeated) return;
 
+    // ── INVULNERABILIDAD DEL BOSS durante preparación/golpe ──
+    // El jugador no puede atacar mientras el boss carga el ataque.
+    // Sí puede hacer parry (eso se gestiona antes en handleTap).
+    if (currentAttack && (currentAttack.phase === 'windup' || currentAttack.phase === 'strike')) {
+        spawnFloatingText(x, y, '¡CUBIERTO!', '#ffaa00');
+        return; // no consume stamina, no rompe combo
+    }
+
+    // ── CHECK STAMINA ──
+    if (stamina < STAMINA_COST) {
+        spawnFloatingText(x, y, 'AGOTADO', 'rgba(255,80,80,0.85)');
+        flashStaminaBar();
+        return; // no consume nada porque ya está vacía
+    }
+    stamina -= STAMINA_COST;
+    updateStaminaUI();
+
     // ── BLOQUEO DEL BOSS ──
     // No puede bloquear si está en mitad de un ataque (sería raro visualmente)
     // Tampoco si acaba de bloquear/recibir daño (cooldown visual)
@@ -438,6 +472,66 @@ function getMultiplier() {
     if (comboCount >= 4)  return 2;
     if (comboCount >= 2)  return 1.5;
     return 1;
+}
+
+// ══════════════════════════════════
+//  STAMINA — gestión y regeneración
+// ══════════════════════════════════
+function startStaminaRegen() {
+    stopStaminaRegen();
+    staminaRegenTimer = setInterval(() => {
+        if (!gameActive) return;
+        if (stamina < STAMINA_MAX) {
+            stamina = Math.min(STAMINA_MAX, stamina + 1);
+            updateStaminaUI();
+        }
+    }, STAMINA_REGEN_MS);
+}
+
+function stopStaminaRegen() {
+    if (staminaRegenTimer) {
+        clearInterval(staminaRegenTimer);
+        staminaRegenTimer = null;
+    }
+}
+
+function updateStaminaUI() {
+    if (staminaBar) {
+        const pct = (stamina / STAMINA_MAX) * 100;
+        staminaBar.style.width = pct + '%';
+        // color según nivel
+        if (stamina >= 3)        staminaBar.style.background = 'rgba(0,200,255,0.65)';
+        else if (stamina >= 2)   staminaBar.style.background = 'rgba(0,160,220,0.6)';
+        else if (stamina >= 1)   staminaBar.style.background = 'rgba(255,170,0,0.7)';
+        else                     staminaBar.style.background = 'rgba(255,80,80,0.7)';
+    }
+    if (staminaCount) {
+        staminaCount.textContent = `${stamina}/${STAMINA_MAX}`;
+    }
+}
+
+function flashStaminaBar() {
+    if (!staminaBar) return;
+    const parent = staminaBar.parentElement;
+    if (!parent) return;
+    parent.classList.remove('stamina-flash');
+    void parent.offsetWidth; // forzar reflow para reiniciar animación
+    parent.classList.add('stamina-flash');
+}
+
+// ══════════════════════════════════
+//  PROGRAMAR ATAQUES DEL BOSS — intervalo variable
+// ══════════════════════════════════
+function scheduleNextBossAttack() {
+    clearTimeout(attackTimeout);
+    if (!gameActive || bossDefeated) return;
+    // Intervalo aleatorio: ATTACK_INTERVAL_MS ± ATTACK_INTERVAL_VAR
+    const variation = (Math.random() * 2 - 1) * ATTACK_INTERVAL_VAR;
+    const next = ATTACK_INTERVAL_MS + variation;
+    attackTimeout = setTimeout(() => {
+        bossAttack();
+        scheduleNextBossAttack();
+    }, next);
 }
 
 // ══════════════════════════════════
@@ -1024,6 +1118,8 @@ function renderRewards(score, time, combo, dmgTaken) {
 // ══════════════════════════════════
 function showVictory() {
     // Parar el bucle de ataques y cancelar cualquier ataque en curso
+    clearTimeout(attackTimeout);
+    attackTimeout = null;
     clearInterval(attackInterval);
     attackInterval = null;
     cancelCurrentAttack();

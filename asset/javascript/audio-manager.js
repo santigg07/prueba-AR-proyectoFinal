@@ -7,92 +7,93 @@
 //  - Auto-desbloqueo en el primer gesto del usuario
 // ══════════════════════════════════════════════════════════════
 
-const AUDIO_BASE = "asset/audio/";
+const AUDIO_BASE = 'asset/audio/';
 
-// Mapa de archivos 
+// Mapa de archivos — cambia los nombres si usas otros
 const MUSIC_TRACKS = {
-    menu:    AUDIO_BASE + "music-menu-bajo.mp3",
-    combat:  AUDIO_BASE + "music-combat-bajo.mp3",
-    victory: AUDIO_BASE + "music-victory.mp3"
+    menu:    AUDIO_BASE + 'music-menu.mp3',
+    combat:  AUDIO_BASE + 'music-combat.mp3',
+    victory: AUDIO_BASE + 'music-victory.mp3'
 };
 
 const SFX_FILES = {
-    attack: AUDIO_BASE + "sfx-zarpazo-pumpumf-fuerte.mp3",
-    hit:    AUDIO_BASE + "sfx-hit.mp3",
-    parry:  AUDIO_BASE + "",
-    block:  AUDIO_BASE + "sfx-block.mp3",
-    damage: AUDIO_BASE + "sfx-damage.mp3",
-    defeat: AUDIO_BASE + "sfx-defeat.mp3"
+    attack: AUDIO_BASE + 'sfx-attack.mp3',
+    hit:    AUDIO_BASE + 'sfx-hit.mp3',
+    parry:  AUDIO_BASE + 'sfx-parry.mp3',
+    block:  AUDIO_BASE + 'sfx-block.mp3',
+    damage: AUDIO_BASE + 'sfx-damage.mp3',
+    defeat: AUDIO_BASE + 'sfx-defeat.mp3'
 };
 
-const FADE_MS = 800; // duración del crossfade entre pistas
-const FADE_STEPS = 20; // resolución del fade
-const SFX_POOL_SIZE = 50; // instacias por efecto (solapamiento)
-const LS_KEY = "spores-audio-settings";
+const FADE_MS        = 400;     // duración del crossfade entre pistas
+const FADE_STEPS     = 20;      // resolución del fade
+const SFX_POOL_SIZE  = 4;       // instancias por efecto (solapamiento)
+const SFX_MIN_GAP_MS = 80;      // tiempo mínimo entre dos disparos del MISMO sfx
+const LS_KEY         = 'spores-audio-settings';
 
 class AudioManager {
     constructor() {
-        this.musicVolume = 0.6;
-        this.sfsVolume = 0.8;
-        this.muted = false;
-        this.currentMusic = null; // key, el, fadeInterval
-        this.sfxPools = {};
-        this.unlocked = false;
-        this.pendingMusic = null; // pista que se quería repoducir antes del unlock
+        this.musicVolume   = 0.6;
+        this.sfxVolume     = 0.8;
+        this.muted         = false;
+        this.currentMusic  = null;   // { key, el, fadeInterval }
+        this.sfxPools      = {};
+        this.unlocked      = false;
+        this.pendingMusic  = null;   // pista que se quería reproducir antes del unlock
 
         this._loadSettings();
         this._buildSfxPools();
         this._bindUnlock();
     }
 
-    // Persistencia
-    _loadSettings(){
-        try{
+    // ─── Persistencia ──────────────────────────────────────
+    _loadSettings() {
+        try {
             const raw = localStorage.getItem(LS_KEY);
             if (!raw) return;
             const s = JSON.parse(raw);
             if (typeof s.musicVolume === 'number') this.musicVolume = s.musicVolume;
             if (typeof s.sfxVolume   === 'number') this.sfxVolume   = s.sfxVolume;
             if (typeof s.muted       === 'boolean') this.muted      = s.muted;
-        } catch (e) {/* ignorar */}
+        } catch (e) { /* ignorar */ }
     }
 
     _saveSettings() {
         try {
             localStorage.setItem(LS_KEY, JSON.stringify({
                 musicVolume: this.musicVolume,
-                sfsVolume: this.sfxVolume,
-                muted: this.muted
+                sfxVolume:   this.sfxVolume,
+                muted:       this.muted
             }));
-        }catch (e) { /* ignorar */ }
+        } catch (e) { /* ignorar */ }
     }
 
-    // Pool de efectos
+    // ─── Pool de efectos ───────────────────────────────────
     _buildSfxPools() {
         for (const [key, src] of Object.entries(SFX_FILES)) {
             const pool = [];
             for (let i = 0; i < SFX_POOL_SIZE; i++) {
                 const a = new Audio(src);
-                a.preload = "auto";
+                a.preload = 'auto';
                 pool.push(a);
             }
-            this.sfxPools[key] = {pool, index: 0};
+            this.sfxPools[key] = { pool, index: 0 };
         }
     }
 
-    //  Desbloqueo por gesto del usuario
+    // ─── Desbloqueo por gesto del usuario ──────────────────
     _bindUnlock() {
         const unlock = () => {
             if (this.unlocked) return;
             this.unlocked = true;
- 
+
             // Forzar carga: reproducir y pausar todos los Audio
             Object.values(this.sfxPools).forEach(({ pool }) => {
                 pool.forEach(a => {
                     a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
                 });
             });
- 
+
             // Si había una pista pendiente, arrancarla
             if (this.pendingMusic) {
                 this.playMusic(this.pendingMusic);
@@ -104,31 +105,31 @@ class AudioManager {
         document.addEventListener('click',      unlock, { once: true });
     }
 
-    // Música 
+    // ─── Música ────────────────────────────────────────────
     playMusic(key) {
         if (!MUSIC_TRACKS[key]) return;
- 
+
         // Si aún no tenemos gesto del usuario, guardar para después
         if (!this.unlocked) {
             this.pendingMusic = key;
             return;
         }
- 
+
         // Si ya está sonando la misma, no hacer nada
         if (this.currentMusic && this.currentMusic.key === key) return;
- 
+
         const newEl = new Audio(MUSIC_TRACKS[key]);
         newEl.loop   = (key !== 'victory'); // victory se escucha una vez
         newEl.volume = 0;
- 
+
         // Fade out de la actual + fade in de la nueva en paralelo
         const prev = this.currentMusic;
         this.currentMusic = { key, el: newEl, fadeInterval: null };
- 
+
         const targetVol = this.muted ? 0 : this.musicVolume;
         newEl.play().catch(err => console.warn('[audio] play music falló:', err));
         this._fadeVolume(newEl, 0, targetVol, FADE_MS);
- 
+
         if (prev && prev.el) {
             this._fadeVolume(prev.el, prev.el.volume, 0, FADE_MS, () => {
                 prev.el.pause();
@@ -143,7 +144,7 @@ class AudioManager {
         this.currentMusic = null;
         this._fadeVolume(prev.el, prev.el.volume, 0, FADE_MS, () => {
             prev.el.pause();
-            prev.el.src = "";
+            prev.el.src = '';
         });
     }
 
@@ -168,11 +169,17 @@ class AudioManager {
         }, stepTime);
     }
 
-    // Efectos 
+    // ─── Efectos ───────────────────────────────────────────
     playSfx(key) {
         if (this.muted) return;
         const entry = this.sfxPools[key];
         if (!entry) return;
+
+        // Anti-solapamiento: ignorar si se acaba de disparar este mismo sfx
+        const now = performance.now();
+        if (entry.lastPlayed && (now - entry.lastPlayed) < SFX_MIN_GAP_MS) return;
+        entry.lastPlayed = now;
+
         const a = entry.pool[entry.index];
         entry.index = (entry.index + 1) % entry.pool.length;
         try {
@@ -182,7 +189,7 @@ class AudioManager {
         } catch (e) { /* ignorar */ }
     }
 
-    // Controles públicos
+    // ─── Controles públicos ────────────────────────────────
     setMusicVolume(v) {
         this.musicVolume = Math.max(0, Math.min(1, v));
         if (this.currentMusic && !this.muted) {
@@ -190,12 +197,12 @@ class AudioManager {
         }
         this._saveSettings();
     }
- 
+
     setSfxVolume(v) {
         this.sfxVolume = Math.max(0, Math.min(1, v));
         this._saveSettings();
     }
- 
+
     setMuted(m) {
         this.muted = !!m;
         if (this.currentMusic) {
@@ -203,12 +210,12 @@ class AudioManager {
         }
         this._saveSettings();
     }
- 
+
     toggleMute() {
         this.setMuted(!this.muted);
         return this.muted;
     }
- 
+
     getState() {
         return {
             musicVolume: this.musicVolume,
@@ -218,6 +225,6 @@ class AudioManager {
     }
 }
 
-// Exportar una única instacia global
+// Exportar una única instancia global
 export const audio = new AudioManager();
-window.audio = audio; // accesible dede consola para debug
+window.audio = audio; // accesible desde consola para debug
