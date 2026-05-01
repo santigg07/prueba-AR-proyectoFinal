@@ -624,7 +624,12 @@ function playerTakeDamage(x, y) {
     updatePlayerHpUI();
     spawnFloatingText(x, y, '¡GOLPE!', '#ff3333');
     screenFlash();
-    if (playerHP <= 0) setTimeout(showDefeat, 400);
+    if (playerHP <= 0) {
+        // Música de derrota cuanto antes: el crossfade hará que se mezcle
+        // suavemente con la música de combate y con el sfx de daño final
+        audio.playMusic('defeat');
+        setTimeout(showDefeat, 400);
+    }
 }
 
 // ══════════════════════════════════
@@ -1132,9 +1137,7 @@ function showVictory() {
     setTimeout(() => { stopGame(); showResult(true); }, DEFEAT_ANIM_MS + 200);
 }
 function showDefeat()  {
-    // Audio: dejamos que termine el sfx 'damage' que acaba de sonar antes
-    // de cambiar la música. Pequeño delay para que no se solape feo.
-    setTimeout(() => audio.playMusic('defeat'), 250);
+    // La música de derrota ya arrancó en playerTakeDamage al tocar 0 HP
     stopGame();
     showResult(false);
 }
