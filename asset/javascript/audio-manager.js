@@ -13,7 +13,8 @@ const AUDIO_BASE = 'asset/audio/';
 const MUSIC_TRACKS = {
     menu:    AUDIO_BASE + 'music-menu.mp3',
     combat:  AUDIO_BASE + 'music-combat.mp3',
-    victory: AUDIO_BASE + 'music-victory.mp3'
+    victory: AUDIO_BASE + 'music-victory.mp3',
+    defeat:  AUDIO_BASE + 'music-defeat.mp3'
 };
 
 const SFX_FILES = {
