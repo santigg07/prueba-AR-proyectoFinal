@@ -32,9 +32,6 @@ const MAX_ENTRIES = 8;
 // Login anónimo automático al cargar — necesario para poder escribir
 signInAnonymously(auth).catch(err => console.warn('Auth anónima fallida:', err));
 
-// Arrancar música del menú (el AudioManager esperará al primer gesto del usuario)
-audio.playMusic('menu');
-
 // ══════════════════════════════════
 //  CONFIG JUEGO
 // ══════════════════════════════════
@@ -195,15 +192,9 @@ function startGame() {
     updateStaminaUI();
     resultOverlay.classList.remove('visible');
     cancelCurrentAttack();
-    currentAttack = null; // reset defensivo extra
     playIdleLoop();
     startStaminaRegen();
-    // Primer ataque un poco antes (1.5s) para que el combate se sienta vivo desde el principio
-    clearTimeout(attackTimeout);
-    attackTimeout = setTimeout(() => {
-        bossAttack();
-        scheduleNextBossAttack();
-    }, 1500);
+    scheduleNextBossAttack();
 }
 
 function restartGame() { startGame(); }
@@ -544,22 +535,11 @@ function scheduleNextBossAttack() {
 //  ATAQUES DEL BOSS — cuerpo a cuerpo con parry
 // ══════════════════════════════════
 function bossAttack() {
-    if (!gameActive || bossDefeated) return;
-    // Si el marcador no está visible justo ahora, NO descartamos: reintentamos pronto.
-    // Así si el usuario movía el móvil al pulsar EMPEZAR, el siguiente pase ya entra.
-    if (!markerVisible) {
-        attackTimeout = setTimeout(() => {
-            if (gameActive && !bossDefeated) bossAttack();
-        }, 600);
-        return;
-    }
+    if (!gameActive || !markerVisible) return;
     if (currentAttack) return; // ya hay uno en curso
+    if (bossDefeated)  return;
 
-    // Usamos una referencia LOCAL `attack` y comprobamos que sigue siendo
-    // la actual antes de mutar estado en cada timeout. Si cancelCurrentAttack
-    // pone `currentAttack = null`, los timeouts huérfanos se ignoran sin pisar.
-    const attack = { phase: 'windup', timeouts: [], parried: false, parryOpenAt: 0 };
-    currentAttack = attack;
+    currentAttack = { phase: 'windup', timeouts: [], parried: false, parryOpenAt: 0 };
 
     // Sonido de ataque al empezar el wind-up
     audio.playSfx('attack');
@@ -571,31 +551,30 @@ function bossAttack() {
     playBossAnim(BOSS_FRAMES.windup, WINDUP_MS);
 
     // La ventana de parry se abre un poco ANTES del strike (más permisivo)
-    attack.parryOpenAt = Date.now() + WINDUP_MS - PARRY_PRE_MS;
+    currentAttack.parryOpenAt = Date.now() + WINDUP_MS - PARRY_PRE_MS;
 
     // FASE 2 — STRIKE (el golpe visual)
-    attack.timeouts.push(setTimeout(() => {
-        if (currentAttack !== attack) return; // cancelado mientras tanto
-        attack.phase = 'strike';
+    currentAttack.timeouts.push(setTimeout(() => {
+        if (!currentAttack) return;
+        currentAttack.phase = 'strike';
         playBossAnim(BOSS_FRAMES.strike, STRIKE_MS);
         spawnStrikeImpact();
 
         // El daño al jugador se evalúa cuando termina la ventana de parry completa
-        const parryEndsIn = Math.max(0, (attack.parryOpenAt + PARRY_WINDOW_MS) - Date.now());
-        attack.timeouts.push(setTimeout(() => {
-            if (currentAttack !== attack) return; // cancelado
-            if (!attack.parried && gameActive) {
+        const parryEndsIn = Math.max(0, (currentAttack.parryOpenAt + PARRY_WINDOW_MS) - Date.now());
+        currentAttack.timeouts.push(setTimeout(() => {
+            if (currentAttack && !currentAttack.parried && gameActive) {
                 playerTakeDamage(window.innerWidth / 2, window.innerHeight / 2);
             }
             // FASE 3 — RECOVER
-            if (currentAttack !== attack) return;
-            attack.phase = 'recover';
-            playBossAnim(BOSS_FRAMES.recover, RECOVER_MS);
-            attack.timeouts.push(setTimeout(() => {
-                if (currentAttack !== attack) return;
-                currentAttack = null;
-                if (!bossDefeated) playIdleLoop();
-            }, RECOVER_MS));
+            if (currentAttack) {
+                currentAttack.phase = 'recover';
+                playBossAnim(BOSS_FRAMES.recover, RECOVER_MS);
+                currentAttack.timeouts.push(setTimeout(() => {
+                    currentAttack = null;
+                    if (!bossDefeated) playIdleLoop();
+                }, RECOVER_MS));
+            }
         }, parryEndsIn));
     }, WINDUP_MS));
 }
