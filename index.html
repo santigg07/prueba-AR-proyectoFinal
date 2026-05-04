@@ -32,7 +32,7 @@
   <div id="bars-row">
     <div class="bar-group bar-player">
       <div class="bar-header">
-        <div class="bar-label" id="player-hp-label">Player</div>
+        <div class="bar-label" id="player-hp-label">Tu vida</div>
         <div class="bar-count" id="player-hp-count">5/5</div>
       </div>
       <div class="bar-bg">
@@ -69,7 +69,7 @@
 <!-- Scan prompt -->
 <div id="scan-prompt">
   <span class="scan-dot"></span>
-  Apunta a una carta o al póster
+  Apunta a la imagen del boss
 </div>
 
 <!-- Start overlay -->
@@ -88,7 +88,7 @@
 
     <div class="overlay-boss-label">BOSS</div>
 
-    <div class="overlay-sub">Escanea una carta o el póster<br>Derrota al enemigo</div>
+    <div class="overlay-sub">Escanea la imagen del boss<br>Derrota al enemigo</div>
 
     <button class="btn-start" onclick="startGame()">EMPEZAR</button>
 
@@ -148,20 +148,10 @@
 
 
 <!-- ════════════════════════════════
-     A-FRAME + MindAR SCENE
-     8 targets — todos invocan al mismo boss (Vaia)
-     Compilar targets.mind con las 8 imágenes en este orden:
-       0 = Grimp (carta 1/7)
-       1 = Pumpumf (carta 2/7)
-       2 = Flyby (carta 3/7)
-       3 = Spiffter (carta 4/7)
-       4 = Spiffty (carta 5/7)
-       5 = Vaia (carta 6/7)
-       6 = Ovie (carta 7/7)
-       7 = Logo Spores & Dreams
+     A-FRAME + AR.JS SCENE
 ════════════════════════════════ -->
 <a-scene
-  mindar-image="imageTargetSrc: asset/targets/targets.mind; autoStart: true; maxTrack: 1; uiLoading: no; uiError: no; uiScanning: no;"
+  mindar-image="imageTargetSrc: asset/targets/targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
   color-space="sRGB"
   renderer="colorManagement: true; antialias: true; alpha: true;"
   vr-mode-ui="enabled: false"
@@ -170,6 +160,7 @@
   id="ar-scene">
 
   <a-assets>
+    <!--<img id="boss-img"  src="asset/imagen/vaia.png">-->
     <img id="boss-idle1" src="asset/imagen/boss-animación/Vaia AR Idle1.png">
     <img id="boss-idle2" src="asset/imagen/boss-animación/Vaia AR Idle2.png">
     <img id="boss-idle3" src="asset/imagen/boss-animación/Vaia AR Idle3.png">
@@ -254,6 +245,8 @@
       material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
     <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
       material="src: #boss-idle1; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
+
   </a-entity>
 
 </a-scene>
