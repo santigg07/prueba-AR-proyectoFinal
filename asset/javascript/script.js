@@ -32,9 +32,6 @@ const MAX_ENTRIES = 8;
 // Login anónimo automático al cargar — necesario para poder escribir
 signInAnonymously(auth).catch(err => console.warn('Auth anónima fallida:', err));
 
-// Arrancar música del menú (el AudioManager esperará al primer gesto del usuario)
-audio.playMusic('menu');
-
 // ══════════════════════════════════
 //  CONFIG JUEGO
 // ══════════════════════════════════
@@ -130,7 +127,7 @@ const staminaCount      = document.getElementById('stamina-count');
 //  ANIMACIÓN DEL BOSS — helpers
 // ══════════════════════════════════
 function setBossFrame(src) {
-    const sprite = getActiveBossSprite();
+    const sprite = document.getElementById('boss-sprite');
     if (sprite) sprite.setAttribute('material', 'src', src);
 }
 
@@ -225,37 +222,25 @@ function cancelLeaderboardListener() {
 }
 
 // ══════════════════════════════════
-//  MARKER EVENTS (MindAR) — múltiples targets, mismo boss
+//  MARKER EVENTS (MindAR)
 // ══════════════════════════════════
-let activeMarkerEl = null;
-
-// Obtiene el <a-plane> boss-sprite del marker activo
-function getActiveBossSprite() {
-    if (activeMarkerEl) return activeMarkerEl.querySelector('.boss-sprite');
-    return null;
-}
-
-// Registrar eventos en TODOS los markers (clase .boss-marker)
-document.querySelectorAll('.boss-marker').forEach(markerEl => {
-    markerEl.addEventListener('targetFound', () => {
+const marker = document.getElementById('boss-marker');
+if (marker) {
+    marker.addEventListener('targetFound', () => {
         markerVisible = true;
-        activeMarkerEl = markerEl;
         scanPrompt.style.display = 'none';
     });
-    markerEl.addEventListener('targetLost', () => {
-        // Solo ocultar si es el marker que estaba activo
-        if (activeMarkerEl === markerEl) {
-            markerVisible = false;
-            scanPrompt.style.display = 'flex';
-        }
+    marker.addEventListener('targetLost', () => {
+        markerVisible = false;
+        scanPrompt.style.display = 'flex';
     });
-});
+}
 
 // ══════════════════════════════════
 //  HIT DETECTION
 // ══════════════════════════════════
 function getBossScreenRect() {
-    const sprite = getActiveBossSprite();
+    const sprite = document.getElementById('boss-sprite');
     if (!sprite || !sprite.object3D) return null;
     const scene  = document.querySelector('a-scene');
     const camera = scene && scene.camera;
@@ -770,7 +755,7 @@ function screenFlash() {
 }
 
 function flashBoss() {
-    const sprite = getActiveBossSprite();
+    const sprite = document.getElementById('boss-sprite');
     if (!sprite) return;
     // Coordenadas actuales del boss en MindAR
     const basePos = sprite.getAttribute('position');

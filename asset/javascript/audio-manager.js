@@ -11,7 +11,6 @@ const AUDIO_BASE = 'asset/audio/';
 
 // Mapa de archivos — cambia los nombres si usas otros
 const MUSIC_TRACKS = {
-    menu:    AUDIO_BASE + '',
     combat:  AUDIO_BASE + 'music-combat.mp3',
     victory: AUDIO_BASE + 'music-victory.mp3',
     defeat:  AUDIO_BASE + 'music-defeat.mp3'
@@ -120,8 +119,22 @@ class AudioManager {
         if (this.currentMusic && this.currentMusic.key === key) return;
 
         const newEl = new Audio(MUSIC_TRACKS[key]);
-        newEl.loop   = (key !== 'victory' && key !== 'defeat'); // victory y defeat se escuchan una vez
+        const isOneShot = (key === 'victory' || key === 'defeat');
+        newEl.loop   = !isOneShot;
         newEl.volume = 0;
+
+        // Para pistas one-shot: garantizar parada al terminar (algunos navegadores
+        // móviles ignoran loop=false y reinician el archivo)
+        if (isOneShot) {
+            newEl.addEventListener('ended', () => {
+                newEl.pause();
+                newEl.currentTime = 0;
+                newEl.loop = false;
+                if (this.currentMusic && this.currentMusic.el === newEl) {
+                    this.currentMusic = null;
+                }
+            }, { once: true });
+        }
 
         // Fade out de la actual + fade in de la nueva en paralelo
         const prev = this.currentMusic;
