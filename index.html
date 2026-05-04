@@ -69,7 +69,7 @@
 <!-- Scan prompt -->
 <div id="scan-prompt">
   <span class="scan-dot"></span>
-  Apunta a la imagen del boss
+  Apunta a una carta de personaje
 </div>
 
 <!-- Start overlay -->
@@ -88,7 +88,7 @@
 
     <div class="overlay-boss-label">BOSS</div>
 
-    <div class="overlay-sub">Escanea la imagen del boss<br>Derrota al enemigo</div>
+    <div class="overlay-sub">Escanea una carta de personaje<br>Derrota al enemigo</div>
 
     <button class="btn-start" onclick="startGame()">EMPEZAR</button>
 
@@ -148,10 +148,20 @@
 
 
 <!-- ════════════════════════════════
-     A-FRAME + AR.JS SCENE
+     A-FRAME + MindAR SCENE
+     8 targets: 0-6 = cartas, 7 = logo
+     Compilar targets.mind con las 8 imágenes en este orden:
+       0 = Grimp (carta 1/7)
+       1 = Pumpumf (carta 2/7)
+       2 = Flyby (carta 3/7)
+       3 = Spiffter (carta 4/7)
+       4 = Spiffty (carta 5/7)
+       5 = Vaia (carta 6/7)
+       6 = Ovie (carta 7/7)
+       7 = Logo Spores & Dreams
 ════════════════════════════════ -->
 <a-scene
-  mindar-image="imageTargetSrc: asset/targets/targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+  mindar-image="imageTargetSrc: asset/targets/targets.mind; autoStart: true; maxTrack: 1; uiLoading: no; uiError: no; uiScanning: no;"
   color-space="sRGB"
   renderer="colorManagement: true; antialias: true; alpha: true;"
   vr-mode-ui="enabled: false"
@@ -160,7 +170,7 @@
   id="ar-scene">
 
   <a-assets>
-    <!--<img id="boss-img"  src="asset/imagen/vaia.png">-->
+    <!-- ── Vaia (boss completo con animaciones) ── -->
     <img id="boss-idle1" src="asset/imagen/boss-animación/Vaia AR Idle1.png">
     <img id="boss-idle2" src="asset/imagen/boss-animación/Vaia AR Idle2.png">
     <img id="boss-idle3" src="asset/imagen/boss-animación/Vaia AR Idle3.png">
@@ -172,6 +182,18 @@
     <img id="boss-defeat3" src="asset/imagen/boss-animación/defeat/Vaia AR Defeat3.png">
     <img id="boss-block" src="asset/imagen/boss-animación/Vaia AR Block.png">
     <img id="boss-hurt" src="asset/imagen/boss-animación/Vaia AR Hurt.png">
+
+    <!-- ── Sprites estáticos de otros bosses ──
+         Pon las imágenes de cada personaje en asset/imagen/bosses/
+         Cuando tengas animaciones para cada uno, añádelas aquí -->
+    <img id="grimp-idle"    src="asset/imagen/bosses/grimp.png">
+    <img id="pumpumf-idle"  src="asset/imagen/bosses/pumpumf.png">
+    <img id="flyby-idle"    src="asset/imagen/bosses/flyby.png">
+    <img id="spiffter-idle" src="asset/imagen/bosses/spiffter.png">
+    <img id="spiffty-idle"  src="asset/imagen/bosses/spiffty.png">
+    <img id="ovie-idle"     src="asset/imagen/bosses/ovie.png">
+
+    <!-- ── Fondo ── -->
     <img id="bg-tree" src="asset/imagen/Background-Tree.png">
   </a-assets>
 
@@ -183,29 +205,68 @@
     raycaster="near: 10; far: 10000; objects: .clickable">
   </a-camera>
 
-  <!-- Entidad de tracking de imagen (reemplaza a <a-marker>) -->
-  <a-entity id="boss-marker" mindar-image-target="targetIndex: 0">
+  <!-- ── Target 0: Grimp (carta 1/7) ── -->
+  <a-entity class="boss-marker" data-boss="grimp" mindar-image-target="targetIndex: 0">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #grimp-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
 
-    <!-- Suelo -->
-    <a-plane
-      id="arena-bg"
-      position="-0 0.15 -0.05"
-      width="1.6"
-      height="0.675"
-      rotation="0 0 0"
-      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double">
-    </a-plane>
+  <!-- ── Target 1: Pumpumf (carta 2/7) ── -->
+  <a-entity class="boss-marker" data-boss="pumpumf" mindar-image-target="targetIndex: 1">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #pumpumf-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
 
-    <!-- Boss -->
-    <a-plane
-      id="boss-sprite"
-      position="0 0.05 0.01"
-      width="0.6"
-      height="0.7"
-      rotation="0 0 0"
-      material="src: #boss-idle1; transparent: true; alphaTest: 0.1">
-    </a-plane>
+  <!-- ── Target 2: Flyby (carta 3/7) ── -->
+  <a-entity class="boss-marker" data-boss="flyby" mindar-image-target="targetIndex: 2">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #flyby-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
 
+  <!-- ── Target 3: Spiffter (carta 4/7) ── -->
+  <a-entity class="boss-marker" data-boss="spiffter" mindar-image-target="targetIndex: 3">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #spiffter-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
+
+  <!-- ── Target 4: Spiffty (carta 5/7) ── -->
+  <a-entity class="boss-marker" data-boss="spiffty" mindar-image-target="targetIndex: 4">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #spiffty-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
+
+  <!-- ── Target 5: Vaia (carta 6/7) — boss principal con animaciones completas ── -->
+  <a-entity class="boss-marker" data-boss="vaia" mindar-image-target="targetIndex: 5">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #boss-idle1; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
+
+  <!-- ── Target 6: Ovie (carta 7/7) ── -->
+  <a-entity class="boss-marker" data-boss="ovie" mindar-image-target="targetIndex: 6">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #ovie-idle; transparent: true; alphaTest: 0.1"></a-plane>
+  </a-entity>
+
+  <!-- ── Target 7: Logo Spores & Dreams (tarjeta trasera) ── -->
+  <a-entity class="boss-marker" data-boss="vaia" mindar-image-target="targetIndex: 7">
+    <a-plane class="arena-bg" position="0 0.15 -0.05" width="1.6" height="0.675"
+      material="src: #bg-tree; transparent: true; alphaTest: 0.05; side: double"></a-plane>
+    <a-plane class="boss-sprite" position="0 0.05 0.01" width="0.6" height="0.7"
+      material="src: #boss-idle1; transparent: true; alphaTest: 0.1"></a-plane>
   </a-entity>
 
 </a-scene>

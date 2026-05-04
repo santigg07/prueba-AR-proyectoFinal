@@ -36,40 +36,174 @@ signInAnonymously(auth).catch(err => console.warn('Auth anónima fallida:', err)
 audio.playMusic('menu');
 
 // ══════════════════════════════════
-//  CONFIG JUEGO
+//  CONFIG JUEGO — base (se sobreescribe según el boss)
 // ══════════════════════════════════
-const BOSS_MAX_HP        = 20;
-const PLAYER_MAX_HP      = 5;
-const DAMAGE_PER_TAP     = 1;
+let BOSS_MAX_HP        = 20;
+let PLAYER_MAX_HP      = 5;
+let DAMAGE_PER_TAP     = 1;
 const SCORE_BASE         = 50;
-const ATTACK_INTERVAL_MS    = 3800;   // intervalo base entre ataques (más calmado)
-const ATTACK_INTERVAL_VAR   = 400;    // variación aleatoria ±X ms (ritmo no robótico)
-const WINDUP_MS          = 900;    // fase de aviso (preparación del golpe)
-const STRIKE_MS          = 200;    // duración visual del golpe
-const PARRY_WINDOW_MS    = 450;    // ventana real para bloquear (empieza antes del strike)
-const PARRY_PRE_MS       = 180;    // cuánto antes del strike se puede empezar a bloquear
-const RECOVER_MS         = 400;    // recuperación tras el golpe
+let ATTACK_INTERVAL_MS    = 3800;
+let ATTACK_INTERVAL_VAR   = 400;
+const WINDUP_MS          = 900;
+const STRIKE_MS          = 200;
+const PARRY_WINDOW_MS    = 450;
+const PARRY_PRE_MS       = 180;
+const RECOVER_MS         = 400;
 const COMBO_RESET_MS     = 1500;
-const BOSS_BLOCK_CHANCE  = 0.35;   // probabilidad de que el boss bloquee un tap
-const BOSS_BLOCK_ANIM_MS = 300;    // duración de la animación de bloqueo
+let BOSS_BLOCK_CHANCE  = 0.35;
+const BOSS_BLOCK_ANIM_MS = 300;
 
 // ── STAMINA del jugador ──
-const STAMINA_MAX        = 4;      // golpes seguidos posibles
-const STAMINA_REGEN_MS   = 600;    // 1 punto cada X ms
-const STAMINA_COST       = 1;      // coste por golpe
+const STAMINA_MAX        = 4;
+const STAMINA_REGEN_MS   = 600;
+const STAMINA_COST       = 1;
 
 // ══════════════════════════════════
-//  ANIMACIÓN DEL BOSS — sprites por fase
+//  CATÁLOGO DE BOSSES
+//  Cada boss define sus stats y sus sprites de animación.
+//  Si un boss no tiene animaciones propias, usa el idle estático
+//  y comparte los frames genéricos de ataque/block/hurt/defeat.
 // ══════════════════════════════════
-const BOSS_FRAMES = {
-    idle:    ['#boss-idle1', '#boss-idle2', '#boss-idle3'],    // respiración en bucle
-    windup:  ['#boss-attack1', '#boss-attack2'],               // levanta el brazo
-    strike:  ['#boss-attack3'],                                // momento del puñetazo
-    recover: ['#boss-attack2', '#boss-idle2'],                 // transición de vuelta a idle
-    block:   ['#boss-block'],                                  // el boss bloquea
-    hurt:    ['#boss-hurt'],                                   // el boss recibe daño
-    defeat:  ['#boss-defeat1', '#boss-defeat2', '#boss-defeat3'] // animación de derrota
+const BOSS_CATALOG = {
+    grimp: {
+        name: 'Grimp',
+        hp: 10,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 3200,
+        attackVar: 300,
+        blockChance: 0.20,
+        // Sprites — cuando tengas animaciones propias, reemplaza aquí
+        frames: {
+            idle:    ['#grimp-idle'],
+            windup:  ['#grimp-idle'],       // placeholder → misma imagen
+            strike:  ['#grimp-idle'],
+            recover: ['#grimp-idle'],
+            block:   ['#grimp-idle'],
+            hurt:    ['#grimp-idle'],
+            defeat:  ['#grimp-idle']
+        }
+    },
+    pumpumf: {
+        name: 'Pumpumf',
+        hp: 20,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 3500,
+        attackVar: 400,
+        blockChance: 0.30,
+        frames: {
+            idle:    ['#pumpumf-idle'],
+            windup:  ['#pumpumf-idle'],
+            strike:  ['#pumpumf-idle'],
+            recover: ['#pumpumf-idle'],
+            block:   ['#pumpumf-idle'],
+            hurt:    ['#pumpumf-idle'],
+            defeat:  ['#pumpumf-idle']
+        }
+    },
+    flyby: {
+        name: 'Flyby',
+        hp: 15,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 2800,
+        attackVar: 500,
+        blockChance: 0.25,
+        frames: {
+            idle:    ['#flyby-idle'],
+            windup:  ['#flyby-idle'],
+            strike:  ['#flyby-idle'],
+            recover: ['#flyby-idle'],
+            block:   ['#flyby-idle'],
+            hurt:    ['#flyby-idle'],
+            defeat:  ['#flyby-idle']
+        }
+    },
+    spiffter: {
+        name: 'Spiffter',
+        hp: 10,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 3600,
+        attackVar: 300,
+        blockChance: 0.30,
+        frames: {
+            idle:    ['#spiffter-idle'],
+            windup:  ['#spiffter-idle'],
+            strike:  ['#spiffter-idle'],
+            recover: ['#spiffter-idle'],
+            block:   ['#spiffter-idle'],
+            hurt:    ['#spiffter-idle'],
+            defeat:  ['#spiffter-idle']
+        }
+    },
+    spiffty: {
+        name: 'Spiffty',
+        hp: 5,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 4500,
+        attackVar: 300,
+        blockChance: 0.10,
+        frames: {
+            idle:    ['#spiffty-idle'],
+            windup:  ['#spiffty-idle'],
+            strike:  ['#spiffty-idle'],
+            recover: ['#spiffty-idle'],
+            block:   ['#spiffty-idle'],
+            hurt:    ['#spiffty-idle'],
+            defeat:  ['#spiffty-idle']
+        }
+    },
+    vaia: {
+        name: 'Vaia',
+        hp: 30,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 3800,
+        attackVar: 400,
+        blockChance: 0.35,
+        // Vaia tiene animaciones completas
+        frames: {
+            idle:    ['#boss-idle1', '#boss-idle2', '#boss-idle3'],
+            windup:  ['#boss-attack1', '#boss-attack2'],
+            strike:  ['#boss-attack3'],
+            recover: ['#boss-attack2', '#boss-idle2'],
+            block:   ['#boss-block'],
+            hurt:    ['#boss-hurt'],
+            defeat:  ['#boss-defeat1', '#boss-defeat2', '#boss-defeat3']
+        }
+    },
+    ovie: {
+        name: 'Ovie',
+        hp: 10,
+        playerHp: 5,
+        damage: 1,
+        attackInterval: 4000,
+        attackVar: 400,
+        blockChance: 0.25,
+        frames: {
+            idle:    ['#ovie-idle'],
+            windup:  ['#ovie-idle'],
+            strike:  ['#ovie-idle'],
+            recover: ['#ovie-idle'],
+            block:   ['#ovie-idle'],
+            hurt:    ['#ovie-idle'],
+            defeat:  ['#ovie-idle']
+        }
+    }
 };
+
+// Boss activo — se establece al detectar un target
+let activeBossKey = 'vaia';           // default
+let activeBossData = BOSS_CATALOG.vaia;
+
+// ══════════════════════════════════
+//  ANIMACIÓN DEL BOSS — sprites por fase (dinámico)
+// ══════════════════════════════════
+// En vez de constantes fijas, ahora leemos de activeBossData.frames
+function getBossFrames() { return activeBossData.frames; }
 const IDLE_FRAME_MS = 400;  // velocidad de la animación idle
 const HURT_ANIM_MS  = 200;  // duración del frame hurt
 const DEFEAT_ANIM_MS = 1200; // duración total de la animación de derrota
@@ -129,8 +263,16 @@ const staminaCount      = document.getElementById('stamina-count');
 // ══════════════════════════════════
 //  ANIMACIÓN DEL BOSS — helpers
 // ══════════════════════════════════
+
+// Obtiene el <a-plane> boss-sprite del marker activo
+function getActiveBossSprite() {
+    if (activeMarkerEl) return activeMarkerEl.querySelector('.boss-sprite');
+    // Fallback: buscar cualquier boss-sprite visible
+    return document.querySelector('.boss-sprite');
+}
+
 function setBossFrame(src) {
-    const sprite = document.getElementById('boss-sprite');
+    const sprite = getActiveBossSprite();
     if (sprite) sprite.setAttribute('material', 'src', src);
 }
 
@@ -158,7 +300,7 @@ function stopBossAnim() {
 // Loop continuo de respiración cuando el boss no está atacando
 function playIdleLoop() {
     clearInterval(bossAnimTimer);
-    const frames = BOSS_FRAMES.idle;
+    const frames = getBossFrames().idle;
     if (!frames || frames.length === 0) return;
     let i = 0;
     setBossFrame(frames[0]);
@@ -193,6 +335,11 @@ function startGame() {
     updateScoreUI();
     updateComboUI();
     updateStaminaUI();
+
+    // Mostrar nombre del boss activo en el HUD
+    const hpLabel = document.getElementById('hp-label');
+    if (hpLabel) hpLabel.textContent = activeBossData.name;
+
     resultOverlay.classList.remove('visible');
     cancelCurrentAttack();
     playIdleLoop();
@@ -225,25 +372,53 @@ function cancelLeaderboardListener() {
 }
 
 // ══════════════════════════════════
-//  MARKER EVENTS (MindAR)
+//  MARKER EVENTS (MindAR) — múltiples targets
 // ══════════════════════════════════
-const marker = document.getElementById('boss-marker');
-if (marker) {
-    marker.addEventListener('targetFound', () => {
+let activeMarkerEl = null;   // referencia al <a-entity> del target activo
+
+// Función para aplicar las stats del boss detectado
+function loadBossFromMarker(markerEl) {
+    const bossKey = markerEl.getAttribute('data-boss') || 'vaia';
+    const data = BOSS_CATALOG[bossKey];
+    if (!data) return;
+
+    activeBossKey  = bossKey;
+    activeBossData = data;
+    activeMarkerEl = markerEl;
+
+    // Aplicar stats del boss a las variables globales
+    BOSS_MAX_HP        = data.hp;
+    PLAYER_MAX_HP      = data.playerHp;
+    DAMAGE_PER_TAP     = data.damage;
+    ATTACK_INTERVAL_MS = data.attackInterval;
+    ATTACK_INTERVAL_VAR = data.attackVar;
+    BOSS_BLOCK_CHANCE  = data.blockChance;
+
+    // Actualizar label del HUD con el nombre del boss
+    const hpLabel = document.getElementById('hp-label');
+    if (hpLabel) hpLabel.textContent = data.name;
+
+    console.log(`[BOSS] Cargado: ${data.name} (HP:${data.hp})`);
+}
+
+// Registrar eventos en TODOS los markers
+document.querySelectorAll('.boss-marker').forEach(markerEl => {
+    markerEl.addEventListener('targetFound', () => {
         markerVisible = true;
         scanPrompt.style.display = 'none';
+        loadBossFromMarker(markerEl);
     });
-    marker.addEventListener('targetLost', () => {
+    markerEl.addEventListener('targetLost', () => {
         markerVisible = false;
         scanPrompt.style.display = 'flex';
     });
-}
+});
 
 // ══════════════════════════════════
 //  HIT DETECTION
 // ══════════════════════════════════
 function getBossScreenRect() {
-    const sprite = document.getElementById('boss-sprite');
+    const sprite = getActiveBossSprite();
     if (!sprite || !sprite.object3D) return null;
     const scene  = document.querySelector('a-scene');
     const camera = scene && scene.camera;
@@ -415,7 +590,7 @@ function bossBlocksTap(x, y) {
     // Mostrar animación de bloqueo (interrumpe idle loop temporalmente)
     clearInterval(bossAnimTimer);
     bossAnimTimer = null;
-    setBossFrame(BOSS_FRAMES.block[0]);
+    setBossFrame(getBossFrames().block[0]);
     bossBusyUntil = Date.now() + BOSS_BLOCK_ANIM_MS;
 
     // Volver a idle cuando termine (si no ha empezado un ataque entretanto)
@@ -434,7 +609,7 @@ function bossBlocksTap(x, y) {
 function playHurtAnim() {
     clearInterval(bossAnimTimer);
     bossAnimTimer = null;
-    setBossFrame(BOSS_FRAMES.hurt[0]);
+    setBossFrame(getBossFrames().hurt[0]);
     bossBusyUntil = Date.now() + HURT_ANIM_MS;
     setTimeout(() => {
         if (!currentAttack && !bossDefeated && Date.now() >= bossBusyUntil) {
@@ -448,7 +623,7 @@ function playDefeatAnim() {
     bossDefeated = true;
     clearInterval(bossAnimTimer);
     bossAnimTimer = null;
-    const frames = BOSS_FRAMES.defeat;
+    const frames = getBossFrames().defeat;
     if (!frames || frames.length === 0) return;
     const step = DEFEAT_ANIM_MS / frames.length;
     let i = 0;
@@ -551,7 +726,7 @@ function bossAttack() {
     spawnWindupIndicator();
 
     // FASE 1 — WIND-UP (preparación)
-    playBossAnim(BOSS_FRAMES.windup, WINDUP_MS);
+    playBossAnim(getBossFrames().windup, WINDUP_MS);
 
     // La ventana de parry se abre un poco ANTES del strike (más permisivo)
     currentAttack.parryOpenAt = Date.now() + WINDUP_MS - PARRY_PRE_MS;
@@ -560,7 +735,7 @@ function bossAttack() {
     currentAttack.timeouts.push(setTimeout(() => {
         if (!currentAttack) return;
         currentAttack.phase = 'strike';
-        playBossAnim(BOSS_FRAMES.strike, STRIKE_MS);
+        playBossAnim(getBossFrames().strike, STRIKE_MS);
         spawnStrikeImpact();
 
         // El daño al jugador se evalúa cuando termina la ventana de parry completa
@@ -572,7 +747,7 @@ function bossAttack() {
             // FASE 3 — RECOVER
             if (currentAttack) {
                 currentAttack.phase = 'recover';
-                playBossAnim(BOSS_FRAMES.recover, RECOVER_MS);
+                playBossAnim(getBossFrames().recover, RECOVER_MS);
                 currentAttack.timeouts.push(setTimeout(() => {
                     currentAttack = null;
                     if (!bossDefeated) playIdleLoop();
@@ -758,7 +933,7 @@ function screenFlash() {
 }
 
 function flashBoss() {
-    const sprite = document.getElementById('boss-sprite');
+    const sprite = getActiveBossSprite();
     if (!sprite) return;
     // Coordenadas actuales del boss en MindAR
     const basePos = sprite.getAttribute('position');
